@@ -33,6 +33,7 @@ export const FriendsPage: React.FC = () => {
   
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [addFriendLoading, setAddFriendLoading] = useState(false);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export const FriendsPage: React.FC = () => {
   const fetchFriends = async () => {
     if (!user) return;
     setLoading(true);
+    setError(null);
     
     try {
       // Fetch confirmed friendships
@@ -139,8 +141,9 @@ export const FriendsPage: React.FC = () => {
       });
 
       setFriends(formattedFriends);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching friends:', err);
+      setError(err.message || 'Fehler beim Laden der Freundesliste.');
     } finally {
       setLoading(false);
     }
@@ -293,6 +296,12 @@ export const FriendsPage: React.FC = () => {
 
           {loading ? (
              <div className="flex justify-center py-10"><Loader2 className="animate-spin text-gray-400" /></div>
+          ) : error ? (
+            <div className="text-center text-red-500 py-10 bg-red-50 rounded-xl border border-red-100 p-4">
+              <p className="font-bold">Fehler</p>
+              <p className="text-sm">{error}</p>
+              <button onClick={fetchFriends} className="mt-2 text-xs bg-red-100 px-3 py-1 rounded hover:bg-red-200 transition-colors text-red-700">Erneut versuchen</button>
+            </div>
           ) : sortedFriends.length === 0 ? (
             <div className="text-center text-gray-500 py-10">
               Noch keine Freunde. Füge jemanden hinzu!

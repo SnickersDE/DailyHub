@@ -1,41 +1,57 @@
--- Fix RLS policies to ensure user_stats are publicly viewable
--- This fixes the issue where friends' points show as 0
+-- COMPLETE RLS FIX
+-- Run this entire script in Supabase SQL Editor to fix all permission issues
 
--- Enable RLS just in case
+-- 1. USER STATS (Points, etc.)
 alter table user_stats enable row level security;
 
--- Drop existing policy if it exists to avoid conflicts (we can't check existence easily in standard SQL script without PL/pgSQL, so we'll use a DO block)
 do $$
 begin
-  if exists (
-    select 1 from pg_policies 
-    where tablename = 'user_stats' 
-    and policyname = 'Stats are viewable by everyone.'
-  ) then
+  if exists (select 1 from pg_policies where tablename = 'user_stats' and policyname = 'Stats are viewable by everyone.') then
     drop policy "Stats are viewable by everyone." on user_stats;
   end if;
 end $$;
 
--- Create the policy allowing SELECT for everyone (authenticated and anon)
--- Or just authenticated if you prefer: using (auth.role() = 'authenticated')
 create policy "Stats are viewable by everyone." 
-  on user_stats 
-  for select 
+  on user_stats for select 
   using (true);
 
--- Ensure profiles are also viewable
+-- 2. PROFILES (Names, Avatars)
+alter table profiles enable row level security;
+
 do $$
 begin
-  if exists (
-    select 1 from pg_policies 
-    where tablename = 'profiles' 
-    and policyname = 'Public profiles are viewable by everyone.'
-  ) then
+  if exists (select 1 from pg_policies where tablename = 'profiles' and policyname = 'Public profiles are viewable by everyone.') then
     drop policy "Public profiles are viewable by everyone." on profiles;
   end if;
 end $$;
 
 create policy "Public profiles are viewable by everyone." 
-  on profiles 
-  for select 
+  on profiles for select 
   using (true);
+
+-- 3. FRIENDSHIPS (The list itself)
+alter table friendships enable row level security;
+
+-- Allow users to see friendships where they are involved
+do $$
+begin
+  if exists (select 1 from pg_policies where tablename = 'friendships' and policyname = 'Friendships are viewable by involved parties.') then
+    drop policy "Friendships are viewable by involved parties." on friendships;
+  end if;
+end $$;
+
+create policy "Friendships are viewable by involved parties." 
+  on friendships for select 
+  using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Also allow inserting friendships (sending requests)
+do $$
+begin
+  if exists (select 1 from pg_policies where tablename = 'friendships' and policyname = 'Users can create friend requests.') then
+    drop policy "Users can create friend requests." on friendships;
+  end if;
+end $$;
+
+create policy "Users can create friend requests." 
+  on friendships for insert 
+  with check (auth.uid() = user_id);
