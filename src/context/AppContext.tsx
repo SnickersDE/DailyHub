@@ -61,6 +61,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             tasks_completed_daily: savedState.tasks.filter(t => t.completed && t.type === 'daily').length,
             tasks_completed_weekly: savedState.tasks.filter(t => t.completed && t.type === 'weekly').length,
             tasks_completed_monthly: savedState.tasks.filter(t => t.completed && t.type === 'monthly').length,
+            active_theme_id: savedState.activeThemeId
           });
         
         if (error) console.error('Error syncing stats:', error);
@@ -72,7 +73,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Debounce sync slightly to avoid too many requests
     const timer = setTimeout(syncStats, 2000);
     return () => clearTimeout(timer);
-  }, [user, savedState.points, savedState.totalPointsEarned, savedState.tasks]);
+  }, [user, savedState.points, savedState.totalPointsEarned, savedState.tasks, savedState.activeThemeId]);
+
+  // Load user data from Supabase on login
+  useEffect(() => {
+    if (!user) return;
+
+    const loadUserData = async () => {
+      try {
+        // 1. Load Stats
+        const { data: stats } = await supabase
+          .from('user_stats')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (stats) {
+          setSavedState(prev => ({
+            ...prev,
+            points: stats.points,
+            totalPointsEarned: stats.total_points,
+            activeThemeId: stats.active_theme_id || 'default'
+          }));
+        }
+
+        // 2. Load Tasks (Assuming we implement task sync later fully, for now we keep local tasks but could merge)
+        // Ideally, we would fetch tasks from 'tasks' table here if implemented.
+        // For this step, we prioritize syncing stats as requested.
+        
+      } catch (err) {
+        console.error('Error loading user data:', err);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   // Check for daily reset
   useEffect(() => {

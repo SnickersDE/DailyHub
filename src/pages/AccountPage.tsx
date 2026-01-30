@@ -1,28 +1,167 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { LoginPage } from './LoginPage';
+import { supabase } from '../lib/supabase';
+import { Camera, Edit2, Loader2, LogOut } from 'lucide-react';
 
 export const AccountPage: React.FC = () => {
+  const { user, profile, signOut, loading: authLoading } = useAuth();
   const { points, totalPointsEarned, achievements, tasks, addPoints } = useApp();
+  
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (profile?.username) {
+      setNewName(profile.username);
+    }
+  }, [profile]);
+
   const unlockedAchievements = achievements.filter(a => a.unlocked).length;
   const completedTasks = tasks.filter(t => t.completed).length;
 
+  if (authLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-white" /></div>;
+
+  // Show Login if not authenticated
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  const handleUpdateName = async () => {
+    if (!newName.trim() || newName === profile?.username) {
+      setEditingName(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ username: newName.trim() })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      // Force reload page to refresh context (simple way) or rely on AuthContext subscription
+      window.location.reload(); 
+    } catch (error) {
+      alert('Fehler beim Aktualisieren des Namens.');
+      console.error(error);
+    } finally {
+      setEditingName(false);
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('Du musst ein Bild auswählen.');
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+      
+      alert('Profilbild aktualisiert!');
+      window.location.reload();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-center text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">Dein Account</h2>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">Dein Account</h2>
+        <button 
+          onClick={signOut}
+          className="p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition-colors"
+          title="Abmelden"
+        >
+          <LogOut size={20} />
+        </button>
+      </div>
       
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center relative overflow-hidden">
-        {/* Simple Profile Picture Selection Mockup */}
+        {/* Profile Picture */}
         <div className="relative inline-block group">
-          <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border-4 border-white shadow-md overflow-hidden cursor-pointer hover:scale-105 transition-transform">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" className="w-full h-full" />
+          <div 
+            className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border-4 border-white shadow-md overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="uppercase">{profile?.username?.substring(0, 2) || '??'}</span>
+            )}
+            {uploading && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <Loader2 className="animate-spin text-white" />
+              </div>
+            )}
           </div>
-          <div className="absolute bottom-4 right-0 bg-blue-500 rounded-full p-1 text-white text-xs shadow-sm cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-            ✏️
-          </div>
+          <button 
+            className="absolute bottom-2 right-0 bg-blue-500 rounded-full p-1.5 text-white shadow-sm hover:bg-blue-600 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Camera size={14} />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleAvatarUpload}
+            className="hidden"
+            accept="image/*"
+          />
         </div>
         
-        <h3 className="text-xl font-bold">Benutzer</h3>
-        <p className="text-gray-500">Level {Math.floor(totalPointsEarned / 50) + 1}</p>
+        {/* Username */}
+        <div className="flex justify-center items-center gap-2 mb-1">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500"
+                autoFocus
+              />
+              <button onClick={handleUpdateName} className="text-xs bg-green-500 text-white px-2 py-1 rounded">Ok</button>
+              <button onClick={() => setEditingName(false)} className="text-xs bg-gray-300 px-2 py-1 rounded">X</button>
+            </div>
+          ) : (
+            <>
+              <h3 className="text-xl font-bold">{profile?.username || 'Gast'}</h3>
+              <button onClick={() => setEditingName(true)} className="text-gray-400 hover:text-gray-600">
+                <Edit2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
+        <p className="text-gray-500 text-sm">Level {Math.floor(totalPointsEarned / 50) + 1}</p>
         
         {/* Dev Tool */}
         <button 
@@ -60,7 +199,7 @@ export const AccountPage: React.FC = () => {
       </div>
       
       <div className="text-center text-sm text-gray-400 mt-8 bg-white/50 inline-block px-4 py-1 rounded-full backdrop-blur-sm mx-auto w-full">
-        Version 1.0.0
+        Version 1.1.0
       </div>
     </div>
   );
