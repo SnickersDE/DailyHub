@@ -7,6 +7,7 @@ import { PlannedTasksPage } from './pages/PlannedTasksPage';
 import { PointsPage } from './pages/PointsPage';
 import { AchievementsPage } from './pages/AchievementsPage';
 import { AccountPage } from './pages/AccountPage';
+import { FriendsPage } from './pages/FriendsPage';
 
 const App: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const App: React.FC = () => {
             <Route index element={<LandingPage />} />
             <Route path="weekly" element={<PlannedTasksPage type="weekly" title="Wochenplanung" />} />
             <Route path="monthly" element={<PlannedTasksPage type="monthly" title="Monatsplanung" />} />
+            <Route path="friends" element={<FriendsPage />} />
             <Route path="points" element={<PointsPage />} />
             <Route path="achievements" element={<AchievementsPage />} />
             <Route path="account" element={<AccountPage />} />

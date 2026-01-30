@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { CheckSquare, ShoppingBag, User, Coins, Sparkles, Calendar, CalendarDays } from 'lucide-react';
+import { CheckSquare, ShoppingBag, User, Coins, Sparkles, Calendar, CalendarDays, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { clsx } from 'clsx';
 
@@ -12,6 +12,7 @@ export const Layout: React.FC = () => {
     { to: '/', icon: CheckSquare, label: 'Täglich' },
     { to: '/weekly', icon: Calendar, label: 'Woche' },
     { to: '/monthly', icon: CalendarDays, label: 'Monat' },
+    { to: '/friends', icon: Users, label: 'Freunde' },
     { to: '/points', icon: ShoppingBag, label: 'Shop' },
     { to: '/account', icon: User, label: 'Konto' },
   ];

@@ -33,6 +33,36 @@ export interface Theme {
   };
 }
 
+export interface UserProfile {
+  id: string;
+  username: string;
+  avatar_url?: string;
+}
+
+export interface UserStats {
+  user_id: string;
+  points: number;
+  total_points: number;
+  tasks_completed_daily: number;
+  tasks_completed_weekly: number;
+  tasks_completed_monthly: number;
+}
+
+export interface Lobby {
+  id: string;
+  code: string;
+  name: string;
+  owner_id: string;
+}
+
+export interface Friend {
+  id: string;
+  user_id: string;
+  friend_id: string;
+  status: 'pending' | 'accepted';
+  profile?: UserProfile; // Joined profile data
+}
+
 export interface AppState {
   points: number;
   totalPointsEarned: number;
