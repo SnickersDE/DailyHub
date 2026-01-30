@@ -10,6 +10,7 @@ import { AccountPage } from './pages/AccountPage';
 import { FriendsPage } from './pages/FriendsPage';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './context/AuthContext';
+import { FriendProfilePage } from './pages/FriendProfilePage';
 
 const App: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ const App: React.FC = () => {
               <Route path="weekly" element={<PlannedTasksPage type="weekly" title="Wochenplanung" />} />
               <Route path="monthly" element={<PlannedTasksPage type="monthly" title="Monatsplanung" />} />
               <Route path="friends" element={<FriendsPage />} />
+              <Route path="friend/:id" element={<FriendProfilePage />} />
               <Route path="points" element={<PointsPage />} />
               <Route path="achievements" element={<AchievementsPage />} />
               <Route path="account" element={<AccountPage />} />

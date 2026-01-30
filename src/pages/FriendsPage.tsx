@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Trophy, UserPlus, Crown, Search, Loader2, Copy } from 'lucide-react';
+import { Users, Trophy, UserPlus, Crown, Search, Loader2, Copy, Eye } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LoginPage } from './LoginPage';
+import { useNavigate } from 'react-router-dom';
 
 type TimeFrame = 'daily' | 'weekly' | 'monthly';
 
@@ -23,6 +24,7 @@ interface FriendData {
 export const FriendsPage: React.FC = () => {
   const { themes, activeThemeId } = useApp();
   const { user, profile, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
   
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'friends'>('leaderboard');
@@ -347,19 +349,33 @@ export const FriendsPage: React.FC = () => {
 
               {/* List View */}
               <div className="bg-white/50 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm border border-gray-100">
-                {sortedFriends.slice(3).map((friend, index) => (
+                {/* Show top 10 friends, including podium places for full visibility as requested */}
+                {sortedFriends.slice(0, 10).map((friend, index) => (
                   <div key={friend.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0 hover:bg-white/80 transition-colors">
                     <div className="flex items-center gap-3">
-                      <span className="text-gray-400 font-mono w-6 text-center">{index + 4}</span>
+                      <span className={clsx("font-mono w-6 text-center font-bold", index < 3 ? "text-yellow-600" : "text-gray-400")}>{index + 1}</span>
                       <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 uppercase">
-                        {friend.username.substring(0, 2)}
+                        {friend.avatar_url ? (
+                          <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          friend.username.substring(0, 2)
+                        )}
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">{friend.username}</div>
                         <div className="text-xs text-gray-500">{getTasksCount(friend)} Aufgaben erledigt</div>
                       </div>
                     </div>
-                    <div className="font-bold text-gray-700">{getPoints(friend)} Pkt</div>
+                    <div className="flex items-center gap-3">
+                      <div className="font-bold text-gray-700">{getPoints(friend)} Pkt</div>
+                      <button 
+                        onClick={() => navigate(`/friend/${friend.id}`)}
+                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Profil ansehen"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -422,11 +438,15 @@ export const FriendsPage: React.FC = () => {
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-gray-500 px-1">Deine Freunde ({friends.length - 1})</h3>
             {friends.filter(f => f.id !== user.id).map(friend => (
-              <div key={friend.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+              <div key={friend.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => navigate(`/friend/${friend.id}`)}>
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold uppercase">
-                      {friend.username.substring(0, 2)}
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold uppercase overflow-hidden">
+                      {friend.avatar_url ? (
+                        <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        friend.username.substring(0, 2)
+                      )}
                     </div>
                   </div>
                   <div>
@@ -434,6 +454,7 @@ export const FriendsPage: React.FC = () => {
                     <div className="text-xs text-gray-500">{friend.points} Punkte</div>
                   </div>
                 </div>
+                <Eye size={18} className="text-gray-400" />
               </div>
             ))}
             {friends.length <= 1 && (
