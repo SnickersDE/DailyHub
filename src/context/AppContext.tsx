@@ -4,6 +4,8 @@ import type { AppState, AppContextType, Task } from '../types';
 import { THEMES, ACHIEVEMENTS } from '../data/constants';
 import confetti from 'canvas-confetti';
 import { playSound } from '../utils/sound';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -32,6 +34,7 @@ const defaultState: SavedState = {
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [savedState, setSavedState] = useState<SavedState>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -41,6 +44,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return defaultState;
     }
   });
+
+  // Sync stats to Supabase when points change
+  useEffect(() => {
+    if (!user) return;
+
+    const syncStats = async () => {
+      try {
+        const { error } = await supabase
+          .from('user_stats')
+          .upsert({
+            user_id: user.id,
+            points: savedState.points,
+            total_points: savedState.totalPointsEarned,
+            // Calculate task stats
+            tasks_completed_daily: savedState.tasks.filter(t => t.completed && t.type === 'daily').length,
+            tasks_completed_weekly: savedState.tasks.filter(t => t.completed && t.type === 'weekly').length,
+            tasks_completed_monthly: savedState.tasks.filter(t => t.completed && t.type === 'monthly').length,
+          });
+        
+        if (error) console.error('Error syncing stats:', error);
+      } catch (err) {
+        console.error('Error in syncStats:', err);
+      }
+    };
+
+    // Debounce sync slightly to avoid too many requests
+    const timer = setTimeout(syncStats, 2000);
+    return () => clearTimeout(timer);
+  }, [user, savedState.points, savedState.totalPointsEarned, savedState.tasks]);
 
   // Check for daily reset
   useEffect(() => {

@@ -1,32 +1,168 @@
-import React, { useState } from 'react';
-import { Users, Trophy, UserPlus, Crown, Search, Share2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Trophy, UserPlus, Crown, Search, Loader2, Copy } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { LoginPage } from './LoginPage';
 
 type TimeFrame = 'daily' | 'weekly' | 'monthly';
 
-// Mock Data for UI demonstration
-const MOCK_LEADERBOARD = [
-  { id: '1', username: 'MaxPower', points: 1250, tasks: 15, avatar: 'MP' },
-  { id: '2', username: 'SarahConnor', points: 980, tasks: 12, avatar: 'SC' },
-  { id: '3', username: 'JohnDoe', points: 850, tasks: 10, avatar: 'JD' },
-  { id: '4', username: 'JaneSmith', points: 720, tasks: 8, avatar: 'JS' },
-  { id: '5', username: 'AlexW', points: 650, tasks: 8, avatar: 'AW' },
-  { id: '6', username: 'LisaM', points: 400, tasks: 5, avatar: 'LM' },
-];
-
-const MOCK_FRIENDS = [
-  { id: '2', username: 'SarahConnor', status: 'online' },
-  { id: '3', username: 'JohnDoe', status: 'offline' },
-];
+interface FriendData {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  friend_code?: string;
+  points: number;
+  total_points: number;
+  tasks_completed_daily: number;
+  tasks_completed_weekly: number;
+  tasks_completed_monthly: number;
+}
 
 export const FriendsPage: React.FC = () => {
   const { themes, activeThemeId } = useApp();
+  const { user, profile, loading: authLoading } = useAuth();
   const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
   
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'friends'>('leaderboard');
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('weekly');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [friends, setFriends] = useState<FriendData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [addFriendLoading, setAddFriendLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchFriends();
+    }
+  }, [user]);
+
+  const fetchFriends = async () => {
+    if (!user) return;
+    setLoading(true);
+    
+    try {
+      // Fetch confirmed friendships
+      const { data: friendships, error } = await supabase
+        .from('friendships')
+        .select(`
+          friend_id,
+          user_id
+        `)
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+        .eq('status', 'accepted');
+
+      if (error) throw error;
+
+      // Extract friend IDs
+      const friendIds = friendships.map(f => 
+        f.user_id === user.id ? f.friend_id : f.user_id
+      );
+
+      // Include self
+      friendIds.push(user.id);
+
+      // Fetch profiles and stats for all friends + self
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          username,
+          avatar_url,
+          friend_code,
+          user_stats (
+            points,
+            total_points,
+            tasks_completed_daily,
+            tasks_completed_weekly,
+            tasks_completed_monthly
+          )
+        `)
+        .in('id', friendIds);
+
+      if (profilesError) throw profilesError;
+
+      const formattedFriends: FriendData[] = profiles.map((p: any) => ({
+        id: p.id,
+        username: p.username,
+        avatar_url: p.avatar_url,
+        friend_code: p.friend_code,
+        points: p.user_stats?.[0]?.points || 0,
+        total_points: p.user_stats?.[0]?.total_points || 0,
+        tasks_completed_daily: p.user_stats?.[0]?.tasks_completed_daily || 0,
+        tasks_completed_weekly: p.user_stats?.[0]?.tasks_completed_weekly || 0,
+        tasks_completed_monthly: p.user_stats?.[0]?.tasks_completed_monthly || 0,
+      }));
+
+      setFriends(formattedFriends);
+    } catch (err) {
+      console.error('Error fetching friends:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddFriend = async () => {
+    if (!searchQuery.trim() || !user) return;
+    setAddFriendLoading(true);
+
+    try {
+      // Find user by friend code
+      const { data: friendProfile, error: searchError } = await supabase
+        .rpc('get_user_by_friend_code', { code_input: searchQuery.trim() })
+        .single();
+
+      if (searchError || !friendProfile) {
+        alert('Benutzer mit diesem Code nicht gefunden.');
+        setAddFriendLoading(false);
+        return;
+      }
+
+      // Cast friendProfile to any or specific type since rpc return type might not be inferred correctly
+      const friend = friendProfile as any;
+
+      if (friend.id === user.id) {
+        alert('Du kannst dich nicht selbst hinzufügen.');
+        setAddFriendLoading(false);
+        return;
+      }
+
+      // Check if friendship already exists
+      const { data: existing } = await supabase
+        .from('friendships')
+        .select('*')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${friend.id}),and(user_id.eq.${friend.id},friend_id.eq.${user.id})`)
+        .single();
+
+      if (existing) {
+        alert('Freundschaftsanfrage existiert bereits oder ihr seid schon Freunde.');
+        setAddFriendLoading(false);
+        return;
+      }
+
+      // Create friendship
+      const { error: addError } = await supabase
+        .from('friendships')
+        .insert({
+          user_id: user.id,
+          friend_id: friend.id,
+          status: 'accepted'
+        });
+
+      if (addError) throw addError;
+
+      alert(`${friend.username} wurde hinzugefügt!`);
+      setSearchQuery('');
+      fetchFriends();
+    } catch (err) {
+      console.error('Error adding friend:', err);
+      alert('Fehler beim Hinzufügen.');
+    } finally {
+      setAddFriendLoading(false);
+    }
+  };
 
   const getTimeFrameLabel = (tf: TimeFrame) => {
     switch (tf) {
@@ -35,6 +171,35 @@ export const FriendsPage: React.FC = () => {
       case 'monthly': return 'Diesen Monat';
     }
   };
+
+  const getPoints = (friend: FriendData) => {
+    // This assumes points in DB are total current points. 
+    // If we want time-framed points, we'd need to track history.
+    // For now, let's use:
+    // Daily: daily tasks count * 10 (approx)
+    // Weekly: weekly tasks count * 20 (approx)
+    // Monthly: monthly tasks count * 50 (approx)
+    // OR just return total points for simplicity if specific stats aren't granular enough
+    
+    // Better: return total points for leaderboard, but maybe show task counts for timeframe
+    return friend.points; 
+  };
+  
+  const getTasksCount = (friend: FriendData) => {
+     switch (timeFrame) {
+      case 'daily': return friend.tasks_completed_daily;
+      case 'weekly': return friend.tasks_completed_weekly;
+      case 'monthly': return friend.tasks_completed_monthly;
+    }
+  };
+
+  const sortedFriends = [...friends].sort((a, b) => getPoints(b) - getPoints(a));
+
+  if (authLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-gray-400" /></div>;
+
+  if (!user) {
+    return <LoginPage />;
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -84,64 +249,82 @@ export const FriendsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Podium */}
-          <div className="flex justify-center items-end gap-4 py-4 min-h-[200px]">
-            {/* 2nd Place */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-gray-400 flex items-center justify-center text-xl font-bold text-gray-600">
-                {MOCK_LEADERBOARD[1].avatar}
-              </div>
-              <div className="flex flex-col items-center bg-gray-200/50 p-3 rounded-t-lg w-24 h-28 justify-end relative">
-                <div className="absolute -top-3 bg-gray-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
-                <span className="font-bold text-gray-700 truncate w-full text-center">{MOCK_LEADERBOARD[1].username}</span>
-                <span className="text-xs text-gray-500">{MOCK_LEADERBOARD[1].points} Pkt</span>
-              </div>
+          {loading ? (
+             <div className="flex justify-center py-10"><Loader2 className="animate-spin text-gray-400" /></div>
+          ) : sortedFriends.length === 0 ? (
+            <div className="text-center text-gray-500 py-10">
+              Noch keine Freunde. Füge jemanden hinzu!
             </div>
+          ) : (
+            <>
+              {/* Podium */}
+              {sortedFriends.length >= 2 && (
+                <div className="flex justify-center items-end gap-4 py-4 min-h-[200px]">
+                  {/* 2nd Place */}
+                  {sortedFriends[1] && (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-gray-400 flex items-center justify-center text-xl font-bold text-gray-600 uppercase">
+                        {sortedFriends[1].username.substring(0, 2)}
+                      </div>
+                      <div className="flex flex-col items-center bg-gray-200/50 p-3 rounded-t-lg w-24 h-28 justify-end relative">
+                        <div className="absolute -top-3 bg-gray-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
+                        <span className="font-bold text-gray-700 truncate w-full text-center">{sortedFriends[1].username}</span>
+                        <span className="text-xs text-gray-500">{getPoints(sortedFriends[1])} Pkt</span>
+                      </div>
+                    </div>
+                  )}
 
-            {/* 1st Place */}
-            <div className="flex flex-col items-center gap-2 z-10">
-              <Crown className="text-yellow-500 animate-bounce" size={24} />
-              <div className="w-20 h-20 rounded-full bg-yellow-100 border-4 border-yellow-400 flex items-center justify-center text-2xl font-bold text-yellow-700 shadow-lg">
-                {MOCK_LEADERBOARD[0].avatar}
-              </div>
-              <div className="flex flex-col items-center bg-gradient-to-b from-yellow-100 to-yellow-50/50 p-3 rounded-t-lg w-28 h-36 justify-end relative shadow-sm">
-                <div className="absolute -top-3 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">#1</div>
-                <span className="font-bold text-gray-800 truncate w-full text-center">{MOCK_LEADERBOARD[0].username}</span>
-                <span className="text-sm text-yellow-700 font-bold">{MOCK_LEADERBOARD[0].points} Pkt</span>
-              </div>
-            </div>
+                  {/* 1st Place */}
+                  {sortedFriends[0] && (
+                    <div className="flex flex-col items-center gap-2 z-10">
+                      <Crown className="text-yellow-500 animate-bounce" size={24} />
+                      <div className="w-20 h-20 rounded-full bg-yellow-100 border-4 border-yellow-400 flex items-center justify-center text-2xl font-bold text-yellow-700 shadow-lg uppercase">
+                         {sortedFriends[0].username.substring(0, 2)}
+                      </div>
+                      <div className="flex flex-col items-center bg-gradient-to-b from-yellow-100 to-yellow-50/50 p-3 rounded-t-lg w-28 h-36 justify-end relative shadow-sm">
+                        <div className="absolute -top-3 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">#1</div>
+                        <span className="font-bold text-gray-800 truncate w-full text-center">{sortedFriends[0].username}</span>
+                        <span className="text-sm text-yellow-700 font-bold">{getPoints(sortedFriends[0])} Pkt</span>
+                      </div>
+                    </div>
+                  )}
 
-            {/* 3rd Place */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-16 h-16 rounded-full bg-orange-100 border-4 border-orange-300 flex items-center justify-center text-xl font-bold text-orange-700">
-                {MOCK_LEADERBOARD[2].avatar}
-              </div>
-              <div className="flex flex-col items-center bg-orange-50/50 p-3 rounded-t-lg w-24 h-20 justify-end relative">
-                <div className="absolute -top-3 bg-orange-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
-                <span className="font-bold text-gray-700 truncate w-full text-center">{MOCK_LEADERBOARD[2].username}</span>
-                <span className="text-xs text-gray-500">{MOCK_LEADERBOARD[2].points} Pkt</span>
-              </div>
-            </div>
-          </div>
-
-          {/* List View */}
-          <div className="bg-white/50 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm border border-gray-100">
-            {MOCK_LEADERBOARD.slice(3).map((user, index) => (
-              <div key={user.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0 hover:bg-white/80 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-400 font-mono w-6 text-center">{index + 4}</span>
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
-                    {user.avatar}
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{user.username}</div>
-                    <div className="text-xs text-gray-500">{user.tasks} Aufgaben erledigt</div>
-                  </div>
+                  {/* 3rd Place */}
+                  {sortedFriends[2] && (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-16 h-16 rounded-full bg-orange-100 border-4 border-orange-300 flex items-center justify-center text-xl font-bold text-orange-700 uppercase">
+                         {sortedFriends[2].username.substring(0, 2)}
+                      </div>
+                      <div className="flex flex-col items-center bg-orange-50/50 p-3 rounded-t-lg w-24 h-20 justify-end relative">
+                        <div className="absolute -top-3 bg-orange-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
+                        <span className="font-bold text-gray-700 truncate w-full text-center">{sortedFriends[2].username}</span>
+                        <span className="text-xs text-gray-500">{getPoints(sortedFriends[2])} Pkt</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="font-bold text-gray-700">{user.points} Pkt</div>
+              )}
+
+              {/* List View */}
+              <div className="bg-white/50 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm border border-gray-100">
+                {sortedFriends.slice(3).map((friend, index) => (
+                  <div key={friend.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0 hover:bg-white/80 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-400 font-mono w-6 text-center">{index + 4}</span>
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 uppercase">
+                        {friend.username.substring(0, 2)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{friend.username}</div>
+                        <div className="text-xs text-gray-500">{getTasksCount(friend)} Aufgaben erledigt</div>
+                      </div>
+                    </div>
+                    <div className="font-bold text-gray-700">{getPoints(friend)} Pkt</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -158,23 +341,38 @@ export const FriendsPage: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
-                  placeholder="Benutzername oder Code..."
+                  placeholder="Freundes-Code eingeben..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase"
                 />
               </div>
-              <button className={clsx("px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors", activeTheme.colors.primary)}>
-                Adden
+              <button 
+                onClick={handleAddFriend}
+                disabled={addFriendLoading || !searchQuery.trim()}
+                className={clsx(
+                  "px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2", 
+                  activeTheme.colors.primary,
+                  addFriendLoading && "opacity-70 cursor-not-allowed"
+                )}
+              >
+                {addFriendLoading ? <Loader2 className="animate-spin" size={16} /> : 'Adden'}
               </button>
             </div>
             
             <div className="pt-2 border-t border-gray-100">
               <div className="text-xs text-gray-500 mb-2">Dein Einladungs-Code</div>
-              <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 border-dashed">
-                <code className="flex-1 text-center font-mono text-lg font-bold tracking-wider text-gray-700">LOBBY-X792</code>
+              <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 border-dashed group cursor-pointer" onClick={() => {
+                if (profile?.friend_code) {
+                  navigator.clipboard.writeText(profile.friend_code);
+                  alert('Code kopiert!');
+                }
+              }}>
+                <code className="flex-1 text-center font-mono text-lg font-bold tracking-wider text-gray-700">
+                  {profile?.friend_code || 'Loading...'}
+                </code>
                 <button className="p-1.5 hover:bg-gray-200 rounded-md text-gray-500 transition-colors">
-                  <Share2 size={16} />
+                  <Copy size={16} />
                 </button>
               </div>
             </div>
@@ -182,29 +380,27 @@ export const FriendsPage: React.FC = () => {
 
           {/* Friend List */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-gray-500 px-1">Deine Freunde</h3>
-            {MOCK_FRIENDS.map(friend => (
+            <h3 className="text-sm font-medium text-gray-500 px-1">Deine Freunde ({friends.length - 1})</h3>
+            {friends.filter(f => f.id !== user.id).map(friend => (
               <div key={friend.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
-                      {friend.username.substring(0, 2).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold uppercase">
+                      {friend.username.substring(0, 2)}
                     </div>
-                    <div className={clsx(
-                      "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
-                      friend.status === 'online' ? 'bg-green-500' : 'bg-gray-300'
-                    )} />
                   </div>
                   <div>
                     <div className="font-medium text-gray-900">{friend.username}</div>
-                    <div className="text-xs text-gray-500">{friend.status === 'online' ? 'Online' : 'Zuletzt gesehen: Heute'}</div>
+                    <div className="text-xs text-gray-500">{friend.points} Punkte</div>
                   </div>
                 </div>
-                <button className="text-gray-400 hover:text-gray-600">
-                  <Users size={18} />
-                </button>
               </div>
             ))}
+            {friends.length <= 1 && (
+               <div className="text-center text-gray-400 py-4 text-sm">
+                 Du hast noch keine Freunde hinzugefügt.
+               </div>
+            )}
           </div>
         </div>
       )}
