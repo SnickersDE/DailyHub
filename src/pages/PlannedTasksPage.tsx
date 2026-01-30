@@ -9,22 +9,7 @@ interface Props {
   title: string;
 }
 
-const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
-const getWeekDates = () => {
-  const now = new Date();
-  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday
-  const diff = currentDay === 0 ? 6 : currentDay - 1; // 0 = Monday
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - diff);
-  monday.setHours(0, 0, 0, 0);
-
-  return WEEKDAYS.map((_, i) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + i);
-    return date.toISOString().split('T')[0];
-  });
-};
 
 export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
   const { tasks, addTask, toggleTask, deleteTask, themes, activeThemeId } = useApp();
@@ -33,28 +18,59 @@ export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
   // For Monthly: standard date input
   const [monthlyDate, setMonthlyDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // For Weekly: selected weekday index (0-6)
-  const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
-    const day = new Date().getDay();
-    return day === 0 ? 6 : day - 1; // Default to current day
-  });
+  // For Weekly: selected weekday index (0-5 for rolling window)
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
   const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
-  const weekDates = getWeekDates();
+  
+  // Rolling Window: Today + 5 days
+  const getRollingWeek = () => {
+    const dates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      dates.push(d);
+    }
+    return dates;
+  };
+
+  const rollingDates = getRollingWeek();
+  const weekDateStrings = rollingDates.map(d => {
+    const offset = d.getTimezoneOffset();
+    const date = new Date(d.getTime() - (offset*60*1000));
+    return date.toISOString().split('T')[0];
+  });
+
+  const getDayLabel = (date: Date, index: number) => {
+    if (index === 0) return 'Heute';
+    if (index === 1) return 'Morgen';
+    return date.toLocaleDateString('de-DE', { weekday: 'long' });
+  };
 
   const filteredTasks = tasks.filter(t => {
-    if (t.type !== type) return false;
+    if (type === 'monthly') return t.type === 'monthly';
+    
     if (type === 'weekly') {
-      // Show tasks for the selected day
-      return t.dueDate === weekDates[selectedDayIndex];
+      const selectedDateString = weekDateStrings[selectedDayIndex];
+      
+      // Show weekly tasks for the specific date
+      if (t.type === 'weekly' && t.dueDate === selectedDateString) return true;
+      
+      // Show daily tasks ONLY for "Today" (index 0)
+      if (t.type === 'daily' && selectedDayIndex === 0) return true;
+      
+      return false;
     }
-    return true; // Monthly shows all sorted by date
+    return false;
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newTaskText.trim()) {
-      const dueDate = type === 'weekly' ? weekDates[selectedDayIndex] : monthlyDate;
+      const dueDate = type === 'weekly' ? weekDateStrings[selectedDayIndex] : monthlyDate;
       addTask(newTaskText.trim(), type, dueDate);
       setNewTaskText('');
       playSound.click();
@@ -75,11 +91,12 @@ export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
 
       {type === 'weekly' && (
         <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 scrollbar-hide">
-          {WEEKDAYS.map((day, index) => {
+          {rollingDates.map((date, index) => {
             const isSelected = selectedDayIndex === index;
+            const label = getDayLabel(date, index);
             return (
               <button
-                key={day}
+                key={date.toISOString()}
                 onClick={() => setSelectedDayIndex(index)}
                 className={clsx(
                   "px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-medium",
@@ -88,7 +105,7 @@ export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
                     : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
                 )}
               >
-                {day}
+                {label}
               </button>
             );
           })}
@@ -101,7 +118,7 @@ export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
             type="text"
             value={newTaskText}
             onChange={(e) => setNewTaskText(e.target.value)}
-            placeholder={type === 'weekly' ? `Aufgabe für ${WEEKDAYS[selectedDayIndex]}...` : "Neue Aufgabe..."}
+            placeholder={type === 'weekly' ? `Aufgabe für ${getDayLabel(rollingDates[selectedDayIndex], selectedDayIndex)}...` : "Neue Aufgabe..."}
             className="flex-1 p-3 rounded-lg border border-white/40 bg-white/70 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm placeholder-gray-500"
           />
         </div>
@@ -139,7 +156,7 @@ export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
           <div className="text-center">
             <div className="text-center py-4 px-6 text-white bg-black/20 backdrop-blur-sm rounded-lg inline-block mx-auto shadow-sm border border-white/20">
               {type === 'weekly' 
-                ? `Keine Aufgaben für ${WEEKDAYS[selectedDayIndex]}.` 
+                ? `Keine Aufgaben für ${getDayLabel(rollingDates[selectedDayIndex], selectedDayIndex)}.` 
                 : "Keine Aufgaben geplant."}
             </div>
           </div>
@@ -182,14 +199,11 @@ export const PlannedTasksPage: React.FC<Props> = ({ type, title }) => {
                 </button>
               </div>
               
-              {task.dueDate && (
+              {task.dueDate && type !== 'weekly' && (
                 <div className="flex items-center gap-2 text-xs text-gray-500 ml-9">
                   <CalendarIcon size={12} />
                   <span>
-                    {type === 'weekly' 
-                      ? WEEKDAYS[new Date(task.dueDate).getDay() === 0 ? 6 : new Date(task.dueDate).getDay() - 1]
-                      : `Fällig am: ${new Date(task.dueDate).toLocaleDateString('de-DE')}`
-                    }
+                    {`Fällig am: ${new Date(task.dueDate).toLocaleDateString('de-DE')}`}
                   </span>
                 </div>
               )}

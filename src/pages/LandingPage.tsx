@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Trash2, Check, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Check, RotateCcw, CalendarPlus } from 'lucide-react';
 import { clsx } from 'clsx';
 import { playSound } from '../utils/sound';
 
 export const LandingPage: React.FC = () => {
   const { tasks, addTask, toggleTask, deleteTask, resetDailyTasks, themes, activeThemeId } = useApp();
   const [newTaskText, setNewTaskText] = useState('');
+  
+  // State for date picker dialog
+  const [showDatePicker, setShowDatePicker] = useState<string | null>(null); // task id
+  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
+
   const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
 
   const dailyTasks = tasks.filter(t => !t.type || t.type === 'daily');
@@ -18,6 +23,13 @@ export const LandingPage: React.FC = () => {
       setNewTaskText('');
       playSound.click();
     }
+  };
+
+  const handleScheduleTask = (taskText: string) => {
+    addTask(taskText, 'weekly', scheduleDate);
+    setShowDatePicker(null);
+    playSound.click();
+    // Optional: visual feedback
   };
 
   const sortedTasks = [...dailyTasks].sort((a, b) => {
@@ -111,9 +123,53 @@ export const LandingPage: React.FC = () => {
               <button
                 onClick={() => deleteTask(task.id)}
                 className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                title="Löschen"
               >
                 <Trash2 size={18} />
               </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowDatePicker(showDatePicker === task.id ? null : task.id)}
+                  className={clsx(
+                    "p-1 rounded-md transition-colors",
+                    activeTheme.colors.primary.replace('bg-', 'text-').replace('shadow-', ''),
+                    "hover:bg-gray-100"
+                  )}
+                  title="In Woche einplanen"
+                >
+                  <CalendarPlus size={18} />
+                </button>
+
+                {showDatePicker === task.id && (
+                  <div className="absolute right-0 top-8 z-20 bg-white p-3 rounded-lg shadow-xl border border-gray-200 animate-in fade-in zoom-in duration-200 min-w-[200px]">
+                    <div className="text-xs font-semibold text-gray-500 mb-2">Datum wählen:</div>
+                    <input 
+                      type="date" 
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      className="w-full p-2 border border-gray-200 rounded-md text-sm mb-2"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button 
+                        onClick={() => setShowDatePicker(null)}
+                        className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded"
+                      >
+                        Abbr.
+                      </button>
+                      <button 
+                        onClick={() => handleScheduleTask(task.text)}
+                        className={clsx(
+                          "px-2 py-1 text-xs text-white rounded shadow-sm",
+                          activeTheme.colors.primary
+                        )}
+                      >
+                        Planen
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ))
         )}
