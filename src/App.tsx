@@ -11,6 +11,9 @@ import { FriendsPage } from './pages/FriendsPage';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './context/AuthContext';
 import { FriendProfilePage } from './pages/FriendProfilePage';
+import { GamesPage } from './pages/GamesPage';
+import { GameLobbyPage } from './pages/GameLobbyPage';
+import { GameBoardPage } from './pages/GameBoardPage';
 
 const App: React.FC = () => {
   return (
@@ -24,6 +27,9 @@ const App: React.FC = () => {
               <Route path="monthly" element={<PlannedTasksPage type="monthly" title="Monatsplanung" />} />
               <Route path="friends" element={<FriendsPage />} />
               <Route path="friend/:id" element={<FriendProfilePage />} />
+              <Route path="games" element={<GamesPage />} />
+              <Route path="games/new" element={<GameLobbyPage />} />
+              <Route path="game/:id" element={<GameBoardPage />} />
               <Route path="points" element={<PointsPage />} />
               <Route path="achievements" element={<AchievementsPage />} />
               <Route path="account" element={<AccountPage />} />
