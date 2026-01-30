@@ -1,0 +1,251 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { AppState, AppContextType, Task } from '../types';
+import { THEMES, ACHIEVEMENTS } from '../data/constants';
+import confetti from 'canvas-confetti';
+import { playSound } from '../utils/sound';
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const STORAGE_KEY = 'adhs-checklist-v1';
+
+interface SavedState {
+  points: number;
+  totalPointsEarned: number;
+  tasks: Task[];
+  unlockedThemeIds: string[];
+  activeThemeId: string;
+  unlockedAchievementIds: string[];
+  lastResetDate: string;
+  lastWeeklyResetDate: string;
+}
+
+const defaultState: SavedState = {
+  points: 0,
+  totalPointsEarned: 0,
+  tasks: [],
+  unlockedThemeIds: ['default'],
+  activeThemeId: 'default',
+  unlockedAchievementIds: [],
+  lastResetDate: new Date().toDateString(),
+  lastWeeklyResetDate: new Date().toDateString(),
+};
+
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [savedState, setSavedState] = useState<SavedState>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : defaultState;
+  });
+
+  // Check for daily reset
+  useEffect(() => {
+    const today = new Date();
+    const todayString = today.toDateString();
+    
+    // Daily Reset
+    if (savedState.lastResetDate !== todayString) {
+      setSavedState(prev => ({
+        ...prev,
+        tasks: prev.tasks.map(t => (
+          t.type === 'daily' 
+            ? { ...t, completed: false, completedAt: undefined }
+            : t
+        )),
+        lastResetDate: todayString
+      }));
+    }
+
+    // Weekly Reset (Monday 00:01)
+    // We check if the current week is different from the last reset week
+    // Simple approach: Check if it's Monday and last reset was NOT today
+    // Or better: Check if today is Monday and last reset date is before today
+    const currentDay = today.getDay(); // 1 = Monday
+    const lastWeeklyReset = new Date(savedState.lastWeeklyResetDate || 0);
+    
+    // Check if it's Monday (1) and we haven't reset today yet
+    // Also ensuring we don't reset multiple times on the same Monday
+    // And if users didn't open app on Monday, we should check if we crossed a Monday.
+    // Let's use ISO week logic or simplified:
+    // If today is Monday and last reset was < today's date (ignoring time)
+    
+    const isMonday = currentDay === 1;
+    const isNewResetDay = lastWeeklyReset.toDateString() !== todayString;
+
+    if (isMonday && isNewResetDay) {
+       setSavedState(prev => ({
+        ...prev,
+        // Delete weekly tasks from previous week
+        tasks: prev.tasks.filter(t => t.type !== 'weekly'),
+        lastWeeklyResetDate: todayString
+      }));
+    }
+
+  }, [savedState.lastResetDate, savedState.lastWeeklyResetDate]);
+
+  // Save to local storage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
+  }, [savedState]);
+
+  const appState: AppState = {
+    points: savedState.points,
+    totalPointsEarned: savedState.totalPointsEarned,
+    tasks: savedState.tasks,
+    activeThemeId: savedState.activeThemeId,
+    themes: THEMES.map(theme => ({
+      ...theme,
+      unlocked: savedState.unlockedThemeIds.includes(theme.id),
+    })),
+    achievements: ACHIEVEMENTS.map(achievement => ({
+      ...achievement,
+      unlocked: savedState.unlockedAchievementIds.includes(achievement.id),
+      condition: achievement.condition, // Pass through condition
+    })),
+  };
+
+  // Check achievements effect
+  useEffect(() => {
+    let newUnlocks: string[] = [];
+    ACHIEVEMENTS.forEach(achievement => {
+      if (!savedState.unlockedAchievementIds.includes(achievement.id)) {
+        if (achievement.condition(appState)) {
+          newUnlocks.push(achievement.id);
+        }
+      }
+    });
+
+    if (newUnlocks.length > 0) {
+      setSavedState(prev => ({
+        ...prev,
+        unlockedAchievementIds: [...prev.unlockedAchievementIds, ...newUnlocks],
+      }));
+      // Fire confetti!
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FFD700', '#FFA500', '#FF4500', '#32CD32', '#1E90FF', '#9370DB']
+      });
+      console.log('New achievements unlocked:', newUnlocks);
+    }
+  }, [savedState, appState]);
+
+  const addTask = (text: string, type: 'daily' | 'weekly' | 'monthly' = 'daily', dueDate?: string) => {
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      text,
+      completed: false,
+      type,
+      dueDate,
+    };
+    setSavedState(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
+  };
+
+  const toggleTask = (id: string) => {
+    setSavedState(prev => {
+      const task = prev.tasks.find(t => t.id === id);
+      if (!task) return prev;
+
+      const isCompleting = !task.completed;
+      const pointsChange = isCompleting ? 1 : -1;
+
+      if (isCompleting) playSound.success();
+
+      // Prevent negative points if user unchecks
+      // But maybe we should allow it or just cap at 0? 
+      // Requirement says "gut schreibt", implies adding. Unchecking removing points is fair.
+      // But if spent, points could go negative?
+      // Let's prevent spending points you don't have, but unchecking removes point.
+      
+      let newPoints = prev.points + pointsChange;
+      let newTotal = prev.totalPointsEarned + (isCompleting ? 1 : 0);
+
+      // If unchecking and points would go below 0 (because spent), allow negative? 
+      // Or just set to 0? If we set to 0, user can exploit by check->spend->uncheck->check->gain.
+      // So we must allow negative or track spent points.
+      // Simple approach: Allow negative points temporarily or block unchecking if points < 1?
+      // Let's just allow it for now, it's a checklist app not a bank.
+
+      return {
+        ...prev,
+        tasks: prev.tasks.map(t => 
+          t.id === id 
+            ? { ...t, completed: isCompleting, completedAt: isCompleting ? Date.now() : undefined } 
+            : t
+        ),
+        points: newPoints,
+        totalPointsEarned: newTotal, // Don't decrement total points earned, only current points
+      };
+    });
+  };
+
+  const deleteTask = (id: string) => {
+    setSavedState(prev => ({
+      ...prev,
+      tasks: prev.tasks.filter(t => t.id !== id),
+    }));
+  };
+
+  const unlockTheme = (id: string) => {
+    const theme = THEMES.find(t => t.id === id);
+    if (!theme) return;
+    if (savedState.unlockedThemeIds.includes(id)) return;
+    if (savedState.points < theme.cost) return;
+
+    setSavedState(prev => ({
+      ...prev,
+      points: prev.points - theme.cost,
+      unlockedThemeIds: [...prev.unlockedThemeIds, id],
+    }));
+    playSound.purchase();
+  };
+
+  const setTheme = (id: string) => {
+    if (savedState.unlockedThemeIds.includes(id)) {
+      setSavedState(prev => ({ ...prev, activeThemeId: id }));
+    }
+  };
+
+  const resetDailyTasks = () => {
+     setSavedState(prev => ({
+        ...prev,
+        tasks: prev.tasks.map(t => (
+          t.type === 'daily' 
+            ? { ...t, completed: false, completedAt: undefined }
+            : t
+        )),
+        lastResetDate: new Date().toDateString()
+      }));
+  };
+
+  const addPoints = (amount: number) => {
+    setSavedState(prev => ({
+      ...prev,
+      points: prev.points + amount,
+      totalPointsEarned: prev.totalPointsEarned + amount
+    }));
+  };
+
+  return (
+    <AppContext.Provider value={{
+      ...appState,
+      addTask,
+      toggleTask,
+      deleteTask,
+      unlockTheme,
+      setTheme,
+      resetDailyTasks,
+      addPoints
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
