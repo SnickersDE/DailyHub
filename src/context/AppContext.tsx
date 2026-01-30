@@ -33,8 +33,13 @@ const defaultState: SavedState = {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [savedState, setSavedState] = useState<SavedState>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : defaultState;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : defaultState;
+    } catch (error) {
+      console.error('Failed to load state from localStorage:', error);
+      return defaultState;
+    }
   });
 
   // Check for daily reset
