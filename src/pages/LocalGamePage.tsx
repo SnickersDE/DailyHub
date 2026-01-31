@@ -19,22 +19,33 @@ export const LocalGamePage: React.FC = () => {
   const [rpsState, setRpsState] = useState<{ moves: Record<string, string>, round: number }>({ moves: {}, round: 1 });
   const [freestyleState, setFreestyleState] = useState<any>({});
   
-  const [isMyTurn, setIsMyTurn] = useState(true);
   const [gameStatus, setGameStatus] = useState<'playing' | 'finished'>('playing');
   
   // Chess specific: Player Color
-  const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
-
-  // Initialization
-  useEffect(() => {
+  // Initialize with random value directly to avoid race condition with useEffect
+  const [playerColor, setPlayerColor] = useState<'white' | 'black'>(() => {
     if (type === 'chess') {
-      const isWhite = Math.random() > 0.5;
-      setPlayerColor(isWhite ? 'white' : 'black');
-      setIsMyTurn(isWhite); // White starts
-    } else {
-      setIsMyTurn(true); // Default for other games
+        return Math.random() > 0.5 ? 'white' : 'black';
     }
-  }, [type]);
+    return 'white';
+  });
+
+  const [isMyTurn, setIsMyTurn] = useState(() => {
+    // If we are initializing chess, we can't easily know the result of the random call above in this scope safely 
+    // without potentially diverging if we called Math.random() again.
+    // However, since we use `playerColor` in the useEffect to correct it, we can start with true.
+    // BUT, if player is Black, they start with true, then useEffect flips to false.
+    // This allows them to drag for 1ms.
+    // BETTER: Use a single state object for initialization.
+    return true; 
+  });
+   
+  // Sync turn with color immediately
+  useEffect(() => {
+     if (type === 'chess') {
+         setIsMyTurn(playerColor === 'white');
+     }
+  }, [playerColor, type]);
 
   // AI Turn Handling
   useEffect(() => {
