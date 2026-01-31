@@ -5,8 +5,7 @@ import * as Icons from 'lucide-react';
 import { Coins, Check, Gift } from 'lucide-react';
 
 export const AchievementsPage: React.FC = () => {
-  const { achievements, activeThemeId, themes, claimAchievement } = useApp();
-  const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
+  const { achievements, claimAchievement } = useApp();
 
   return (
     <div className="space-y-6 pb-20">

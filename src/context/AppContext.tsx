@@ -173,6 +173,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     achievements: ACHIEVEMENTS.map(achievement => ({
       ...achievement,
       unlocked: savedState.unlockedAchievementIds.includes(achievement.id),
+      claimed: savedState.claimedAchievementIds?.includes(achievement.id) || false,
       condition: achievement.condition, // Pass through condition
     })),
   };

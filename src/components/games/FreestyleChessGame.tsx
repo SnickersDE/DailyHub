@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { Crown, Flag, Square, Hand, Scissors, HelpCircle } from 'lucide-react';
+import { Flag, Square, Hand, Scissors, HelpCircle } from 'lucide-react';
 import { initGame, isValidMove, resolveCombat } from '../../lib/freestyleChess';
 import type { GameState, PieceWithPos, Role } from '../../lib/freestyleChess';
 import { ChessPieceIcons } from './ChessPieceIcons';
