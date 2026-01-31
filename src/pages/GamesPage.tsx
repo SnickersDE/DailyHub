@@ -121,9 +121,12 @@ export const GamesPage: React.FC = () => {
     setInvites(prev => prev.filter(i => i.id !== id));
   };
 
-  const startNewGame = (type: 'chess' | 'tictactoe' | 'rps' | 'freestyle_chess') => {
-    // Navigate to a lobby/select friend screen
-    navigate(`/games/new?type=${type}`);
+  const startNewGame = (type: 'chess' | 'tictactoe' | 'rps' | 'freestyle_chess', mode: 'pvp' | 'pvc' = 'pvp') => {
+    if (mode === 'pvc') {
+      navigate(`/game/local?type=${type}`);
+    } else {
+      navigate(`/games/new?type=${type}`);
+    }
   };
 
   return (
@@ -225,7 +228,7 @@ export const GamesPage: React.FC = () => {
                <Users size={16} /> vs Freund
              </button>
              <button onClick={() => startNewGame('tictactoe', 'pvc')} className="flex-1 p-3 text-sm font-bold text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-2">
-               <Monitor size={16} /> vs CPU
+               <Brain size={16} /> vs CPU
              </button>
            </div>
         </div>

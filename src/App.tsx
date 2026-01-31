@@ -14,6 +14,7 @@ import { FriendProfilePage } from './pages/FriendProfilePage';
 import { GamesPage } from './pages/GamesPage';
 import { GameLobbyPage } from './pages/GameLobbyPage';
 import { GameBoardPage } from './pages/GameBoardPage';
+import { LocalGamePage } from './pages/LocalGamePage';
 
 const App: React.FC = () => {
   return (
