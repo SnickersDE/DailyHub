@@ -18,4 +18,14 @@ const getSupabaseKey = () => {
 const supabaseUrl = getSupabaseUrl();
 const supabaseAnonKey = getSupabaseKey();
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  global: {
+    headers: {
+      'apikey': supabaseAnonKey
+    }
+  }
+});

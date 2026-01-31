@@ -6,7 +6,8 @@ import { RPSGame } from '../components/games/RPSGame';
 import { ChessGame } from '../components/games/ChessGame';
 import { FreestyleChessGame } from '../components/games/FreestyleChessGame';
 import { Chess } from 'chess.js';
-import { getTicTacToeMove, getRPSMove, getChessMove, performFreestyleSetup, getFreestyleMove, Difficulty } from '../lib/gameAI';
+import { getTicTacToeMove, getRPSMove, getChessMove, performFreestyleSetup, getFreestyleMove } from '../lib/gameAI';
+import type { Difficulty } from '../lib/gameAI';
 
 export const LocalGamePage: React.FC = () => {
   const [searchParams] = useSearchParams();
