@@ -119,9 +119,7 @@ export const ChessGame: React.FC<Props> = ({ gameState, isMyTurn, isPlayer1, onM
     const myColor = isPlayer1 ? 'w' : 'b'; // Assuming isPlayer1=true means White
     
     // Check if orientation matches piece color
-    // If isPlayer1 is true, we are White. If piece starts with 'w', it's ours.
-    // If isPlayer1 is false, we are Black. If piece starts with 'b', it's ours.
-    if ((isPlayer1 && pieceColor !== 'w') || (!isPlayer1 && pieceColor !== 'b')) {
+    if (pieceColor !== myColor) {
         return;
     }
 
