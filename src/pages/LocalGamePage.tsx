@@ -4,21 +4,9 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { TicTacToeGame } from '../components/games/TicTacToeGame';
 import { RPSGame } from '../components/games/RPSGame';
 import { ChessGame } from '../components/games/ChessGame';
+import { FreestyleChessGame } from '../components/games/FreestyleChessGame';
 import { Chess } from 'chess.js';
-
-// Simple AI implementation for TicTacToe
-const getTicTacToeMove = (board: (string | null)[]) => {
-  const emptyIndices = board.map((val, idx) => val === null ? idx : null).filter(val => val !== null) as number[];
-  if (emptyIndices.length === 0) return -1;
-  // Random move for now
-  return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
-};
-
-// Simple AI for RPS
-const getRPSMove = () => {
-  const moves = ['rock', 'paper', 'scissors'];
-  return moves[Math.floor(Math.random() * moves.length)];
-};
+import { getTicTacToeMove, getRPSMove, getChessMove, performFreestyleSetup, getFreestyleMove } from '../lib/gameAI';
 
 export const LocalGamePage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -26,75 +14,118 @@ export const LocalGamePage: React.FC = () => {
   const type = searchParams.get('type') as 'chess' | 'tictactoe' | 'rps' | 'freestyle_chess';
   
   // Game States
-  const [tictactoeState, setTictactoeState] = useState(Array(9).fill(null));
+  // TicTacToe: { board: (string|null)[] }
+  const [tictactoeState, setTictactoeState] = useState<{ board: (string | null)[] }>({ board: Array(9).fill(null) });
+  // Chess: { fen: string }
   const [chessState, setChessState] = useState({ fen: new Chess().fen() });
+  // RPS: { moves: Record<string, string>, round: number }
   const [rpsState, setRpsState] = useState<{ moves: Record<string, string>, round: number }>({ moves: {}, round: 1 });
+  // Freestyle: GameState (initially empty)
+  const [freestyleState, setFreestyleState] = useState<any>({});
   
   const [isMyTurn, setIsMyTurn] = useState(true);
   const [gameStatus, setGameStatus] = useState<'playing' | 'finished'>('playing');
 
   // AI Turn Handling
   useEffect(() => {
-    if (!isMyTurn && gameStatus === 'playing') {
+    // Check if it's CPU's turn or CPU needs to act
+    let shouldAct = !isMyTurn && gameStatus === 'playing';
+    
+    // Special case for Freestyle: CPU needs to setup even if game not "started" (setup phase)
+    if (type === 'freestyle_chess' && freestyleState.setup && !freestyleState.setup.cpu?.ready) {
+      shouldAct = true;
+    }
+
+    if (shouldAct) {
       const timer = setTimeout(() => {
         makeAIMove();
       }, 1000); // 1s delay for "thinking"
       return () => clearTimeout(timer);
     }
-  }, [isMyTurn, gameStatus]);
+  }, [isMyTurn, gameStatus, freestyleState, type]);
 
   const makeAIMove = () => {
     if (type === 'tictactoe') {
-      const moveIdx = getTicTacToeMove(tictactoeState);
+      const moveIdx = getTicTacToeMove(tictactoeState.board);
       if (moveIdx !== -1) {
-        const newBoard = [...tictactoeState];
+        const newBoard = [...tictactoeState.board];
         newBoard[moveIdx] = 'O'; // AI is O
-        setTictactoeState(newBoard);
+        setTictactoeState({ board: newBoard });
         setIsMyTurn(true);
       }
     } else if (type === 'rps') {
       const aiMove = getRPSMove();
-      // RPS is simultaneous, but in local turn-based flow:
-      // Player moves first (stored), then AI moves immediately.
-      // Actually RPSGame component handles simultaneous feel. 
-      // But here we need to feed AI move.
-      // Let's assume we triggered AI move after player move.
       const newMoves = { ...rpsState.moves, 'cpu': aiMove };
       setRpsState({ ...rpsState, moves: newMoves });
       setIsMyTurn(true);
     } else if (type === 'chess') {
-      const game = new Chess(chessState.fen);
-      const moves = game.moves();
-      if (moves.length > 0) {
-        const randomMove = moves[Math.floor(Math.random() * moves.length)];
-        game.move(randomMove);
+      const aiMove = getChessMove(chessState.fen);
+      if (aiMove) {
+        const game = new Chess(chessState.fen);
+        game.move(aiMove);
         setChessState({ fen: game.fen() });
         setIsMyTurn(true);
       } else {
+        // No moves? Checkmate or Stalemate
         setGameStatus('finished');
+      }
+    } else if (type === 'freestyle_chess') {
+      if (!freestyleState.setup) return;
+
+      // 1. Setup Phase
+      if (!freestyleState.setup.cpu.ready) {
+        const newState = performFreestyleSetup(freestyleState, 'cpu');
+        setFreestyleState(newState);
+        // Don't change turn yet, just update state. 
+        // If player is also ready, the game starts, and turn is P1 (player).
+        return;
+      }
+
+      // 2. Gameplay Phase
+      // Only move if it is actually CPU's turn
+      if (freestyleState.turn === 'cpu') {
+        const result = getFreestyleMove(freestyleState, 'cpu');
+        if (result) {
+          setFreestyleState(result.newState);
+          // Turn logic handled by state (newState.turn should be updated? 
+          // getFreestyleMove logic updates pieces. We need to update TURN too.
+          // Wait, getFreestyleMove didn't update turn.
+          // We need to do it here or in helper.
+          // Let's manually toggle turn here for safety.
+          const stateWithTurn = { ...result.newState, turn: 'player' };
+          setFreestyleState(stateWithTurn);
+          setIsMyTurn(true);
+        }
       }
     }
   };
 
-  const handlePlayerMove = (newState: any) => {
+  const handlePlayerMove = (newState: any, nextTurnId?: string) => {
     if (type === 'tictactoe') {
       setTictactoeState(newState);
       setIsMyTurn(false);
     } else if (type === 'rps') {
-      // Player moved. RPSGame usually sends { moves: { [id]: move } }
-      // We merge it.
       const playerMove = newState.moves['player'];
       if (playerMove) {
          setRpsState({ ...rpsState, moves: { ...rpsState.moves, 'player': playerMove } });
-         setIsMyTurn(false); // Trigger AI
+         setIsMyTurn(false); 
       } else if (Object.keys(newState.moves).length === 0) {
-        // Reset
         setRpsState({ moves: {}, round: rpsState.round + 1 });
         setIsMyTurn(true);
       }
     } else if (type === 'chess') {
       setChessState(newState);
       setIsMyTurn(false);
+    } else if (type === 'freestyle_chess') {
+      setFreestyleState(newState);
+      // Update isMyTurn based on nextTurnId
+      if (nextTurnId) {
+        setIsMyTurn(nextTurnId === 'player');
+      } else {
+        // If no nextTurnId passed, assume turn switch?
+        // FreestyleChessGame passes nextTurnId.
+        // If undefined (e.g. setup phase), don't change isMyTurn blindly.
+      }
     }
   };
 
@@ -112,10 +143,14 @@ export const LocalGamePage: React.FC = () => {
             {type === 'tictactoe' && 'Tic-Tac-Toe vs CPU'}
             {type === 'chess' && 'Schach vs CPU'}
             {type === 'rps' && 'RPS vs CPU'}
-            {type === 'freestyle_chess' && 'Freestyle Chess (Coming Soon)'}
+            {type === 'freestyle_chess' && 'Freestyle Chess vs CPU'}
           </h2>
           <p className="text-xs text-white/80">
-            {isMyTurn ? 'Du bist dran' : 'Computer überlegt...'}
+            {gameStatus === 'finished' ? 'Spiel beendet' : (
+              type === 'freestyle_chess' && freestyleState.setup && (!freestyleState.setup.player?.ready || !freestyleState.setup.cpu?.ready) 
+                ? 'Setup Phase...' 
+                : (isMyTurn ? 'Du bist dran' : 'Computer überlegt...')
+            )}
           </p>
         </div>
         <button 
@@ -140,7 +175,7 @@ export const LocalGamePage: React.FC = () => {
           <ChessGame 
             gameState={chessState}
             isMyTurn={isMyTurn}
-            isPlayer1={true} // Player is always White in PVC for now
+            isPlayer1={true}
             player1Id="player"
             player2Id="cpu"
             onMove={(newState) => handlePlayerMove(newState)}
@@ -150,17 +185,22 @@ export const LocalGamePage: React.FC = () => {
         {type === 'rps' && (
            <RPSGame 
              gameState={rpsState}
-             isMyTurn={true} // Always allow interaction, state handles flow
+             isMyTurn={true} 
              myPlayerId="player"
              onMove={(newState) => handlePlayerMove(newState)}
            />
         )}
 
         {type === 'freestyle_chess' && (
-          <div className="text-center p-10">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Coming Soon!</h3>
-            <p className="text-gray-600">Der CPU-Modus für Freestyle Chess ist noch in Arbeit.</p>
-          </div>
+          <FreestyleChessGame 
+            gameState={freestyleState}
+            isMyTurn={isMyTurn}
+            isPlayer1={true}
+            player1Id="player"
+            player2Id="cpu"
+            myPlayerId="player"
+            onMove={(newState, nextTurnId) => handlePlayerMove(newState, nextTurnId)}
+          />
         )}
       </div>
     </div>

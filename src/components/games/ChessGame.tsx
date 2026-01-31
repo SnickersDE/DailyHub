@@ -17,8 +17,12 @@ export const ChessGame: React.FC<Props> = ({ gameState, isMyTurn, isPlayer1, onM
 
   useEffect(() => {
     if (gameState?.fen) {
-      const newGame = new Chess(gameState.fen);
-      setGame(newGame);
+      try {
+        const newGame = new Chess(gameState.fen);
+        setGame(newGame);
+      } catch (e) {
+        console.error("Invalid FEN:", gameState.fen);
+      }
     }
   }, [gameState]);
 
@@ -26,7 +30,10 @@ export const ChessGame: React.FC<Props> = ({ gameState, isMyTurn, isPlayer1, onM
     if (!isMyTurn) return false;
 
     try {
-      const move = game.move({
+      // Create a copy to manipulate
+      const gameCopy = new Chess(game.fen());
+      
+      const move = gameCopy.move({
         from: sourceSquare,
         to: targetSquare,
         promotion: 'q', // always promote to queen for simplicity
@@ -34,18 +41,22 @@ export const ChessGame: React.FC<Props> = ({ gameState, isMyTurn, isPlayer1, onM
 
       if (move === null) return false;
 
-      // Move was valid, update state
-      const newFen = game.fen();
+      // Move was valid, update local state IMMEDIATELY to prevent snapback
+      setGame(gameCopy);
+
+      // Notify parent
+      const newFen = gameCopy.fen();
       const nextTurnId = isPlayer1 ? player2Id : player1Id;
       
       let winnerId = undefined;
-      if (game.isCheckmate()) {
+      if (gameCopy.isCheckmate()) {
         winnerId = isPlayer1 ? player1Id : player2Id; // I just moved, so I won
       }
       
       onMove({ fen: newFen }, nextTurnId, winnerId);
       return true;
     } catch (e) {
+      console.error("Move error:", e);
       return false;
     }
   }
@@ -57,6 +68,7 @@ export const ChessGame: React.FC<Props> = ({ gameState, isMyTurn, isPlayer1, onM
         onPieceDrop={onDrop}
         boardOrientation={(isPlayer1 ? 'white' : 'black') as 'white' | 'black'}
         arePiecesDraggable={isMyTurn}
+        animationDuration={200}
       />
     </div>
   );
