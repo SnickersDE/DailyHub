@@ -21,7 +21,8 @@ export const FreestyleChessGame: React.FC<Props> = ({
   const [localState, setLocalState] = useState<GameState | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<PieceWithPos | null>(null);
   const [setupMode, setSetupMode] = useState<'role' | 'flag'>('role'); // For setup phase
-  const [roleChanges, setRoleChanges] = useState(0); // Track role changes
+  const [modifiedPieceIds, setModifiedPieceIds] = useState<Set<string>>(new Set()); // Track unique pieces modified
+  const [combatAnim, setCombatAnim] = useState<{ attacker: PieceWithPos, defender: PieceWithPos, result: string } | null>(null);
 
   useEffect(() => {
     if (!gameState || Object.keys(gameState).length === 0) {
@@ -30,9 +31,8 @@ export const FreestyleChessGame: React.FC<Props> = ({
       onMove(initial, player1Id); // Sync init
     } else {
       setLocalState(gameState);
-      // If we are loading state, we might want to know how many changes happened?
-      // Since we don't store roleChanges in GameState yet, we reset it on reload.
-      // This is acceptable for MVP as it resets per session or client.
+      // Reset modification tracking on reload? 
+      // Ideally we persist this in GameState setupPhase, but for now we keep local session state.
     }
   }, [gameState]);
 
@@ -51,15 +51,18 @@ export const FreestyleChessGame: React.FC<Props> = ({
     const p = newBoard[pIndex];
 
     if (setupMode === 'role') {
-      if (roleChanges >= 3) {
-        alert("Du darfst nur 3 mal die Rollen ändern!");
+      if (modifiedPieceIds.size >= 3 && !modifiedPieceIds.has(p.id)) {
+        alert("Du darfst nur bei 3 Figuren die Rollen ändern!");
         return;
       }
+      
       // Cycle roles: Rock -> Paper -> Scissors -> Rock
       const roles: Role[] = ['rock', 'paper', 'scissors'];
       const currentIdx = roles.indexOf(p.role);
       p.role = roles[(currentIdx + 1) % 3];
-      setRoleChanges(c => c + 1);
+      
+      // Add to modified set
+      setModifiedPieceIds(prev => new Set(prev).add(p.id));
     } else {
       // Toggle flag (only 1 allowed)
       if (p.hasFlag) {
@@ -131,32 +134,46 @@ export const FreestyleChessGame: React.FC<Props> = ({
     newBoard[pIndex] = { ...piece, row: toRow, col: toCol };
 
     if (target) {
-      // COMBAT
+      // COMBAT ANIMATION TRIGGER
       const { winner, draw } = resolveCombat(piece, target);
-      
-      // Reveal roles
-      newBoard[pIndex].revealed = true;
-      const tIndex = newBoard.findIndex(p => p.id === target.id);
-      newBoard[tIndex].revealed = true;
+      let resultText = '';
+      if (draw) resultText = 'Unentschieden!';
+      else if (winner?.id === piece.id) resultText = 'Angreifer gewinnt!';
+      else resultText = 'Verteidiger gewinnt!';
 
-      log.push(`Kampf: ${piece.role} vs ${target.role}`);
+      // Show animation overlay
+      setCombatAnim({ attacker: piece, defender: target, result: resultText });
 
-      if (draw) {
-        newBoard[pIndex].isDead = true;
-        newBoard[tIndex].isDead = true;
-        log.push('Unentschieden! Beide vernichtet.');
-      } else if (winner?.id === piece.id) {
-        newBoard[tIndex].isDead = true;
-        log.push(`Angreifer gewinnt!`);
-        if (target.hasFlag) winnerId = myPlayerId;
-      } else {
-        newBoard[pIndex].isDead = true;
-        log.push(`Verteidiger gewinnt!`);
-        if (piece.hasFlag) winnerId = target.owner; 
-      }
+      // Delay actual update to show animation
+      setTimeout(() => {
+        // Reveal roles
+        newBoard[pIndex].revealed = true;
+        const tIndex = newBoard.findIndex(p => p.id === target.id);
+        newBoard[tIndex].revealed = true;
+
+        log.push(`Kampf: ${piece.role} vs ${target.role}`);
+
+        if (draw) {
+          newBoard[pIndex].isDead = true;
+          newBoard[tIndex].isDead = true;
+          log.push('Unentschieden! Beide vernichtet.');
+        } else if (winner?.id === piece.id) {
+          newBoard[tIndex].isDead = true;
+          log.push(`Angreifer gewinnt!`);
+          if (target.hasFlag) winnerId = myPlayerId;
+        } else {
+          newBoard[pIndex].isDead = true;
+          log.push(`Verteidiger gewinnt!`);
+          if (piece.hasFlag) winnerId = target.owner; 
+        }
+
+        onMove({ ...localState, board: newBoard, log, turn: nextTurn }, nextTurn, winnerId);
+        setCombatAnim(null); // Hide animation
+      }, 2000); // 2 seconds animation
+    } else {
+      // Simple move, immediate
+      onMove({ ...localState, board: newBoard, log, turn: nextTurn }, nextTurn, winnerId);
     }
-
-    onMove({ ...localState, board: newBoard, log, turn: nextTurn }, nextTurn, winnerId);
   };
 
   // --- RENDER HELPERS ---
@@ -196,13 +213,45 @@ export const FreestyleChessGame: React.FC<Props> = ({
   const cols = [0,1,2,3,4,5,6,7]; 
   
   return (
-    <div className="flex flex-col gap-4 w-full max-w-[600px] mx-auto">
+    <div className="flex flex-col gap-4 w-full max-w-[800px] mx-auto relative">
+      {combatAnim && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-lg">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-6 animate-in zoom-in duration-300">
+            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">DUELL!</h2>
+            
+            <div className="flex items-center gap-12">
+              <div className="flex flex-col items-center gap-2 animate-shake-left">
+                <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center border-4 border-blue-500 shadow-lg">
+                   {/* We assume we can render the icon here based on role */}
+                   {/* Just showing generic for now or we duplicate logic? Let's use role text */}
+                   <span className="text-4xl capitalize">{combatAnim.attacker.role === 'rock' ? '🪨' : combatAnim.attacker.role === 'paper' ? '📄' : '✂️'}</span>
+                </div>
+                <span className="font-bold text-blue-700">Angreifer</span>
+              </div>
+
+              <div className="text-4xl font-black text-gray-400">VS</div>
+
+              <div className="flex flex-col items-center gap-2 animate-shake-right">
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center border-4 border-red-500 shadow-lg">
+                   <span className="text-4xl capitalize">{combatAnim.defender.role === 'rock' ? '🪨' : combatAnim.defender.role === 'paper' ? '📄' : '✂️'}</span>
+                </div>
+                <span className="font-bold text-red-700">Verteidiger</span>
+              </div>
+            </div>
+
+            <div className="text-xl font-bold text-gray-800 animate-pulse mt-4">
+              {combatAnim.result}
+            </div>
+          </div>
+        </div>
+      )}
+
       {!gameStarted && (
         <div className="bg-white p-4 rounded-xl shadow-lg border border-yellow-200">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-bold text-lg">Setup Phase</h3>
             <span className="text-sm font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">
-              Änderungen übrig: {3 - roleChanges}
+              Figuren angepasst: {modifiedPieceIds.size} / 3
             </span>
           </div>
           <div className="flex gap-4 mb-4">

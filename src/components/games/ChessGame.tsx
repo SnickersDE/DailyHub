@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
+import { useApp } from '../../context/AppContext';
+import { ChessPieceIcons } from './ChessPieceIcons';
 
 interface Props {
   gameState: any; // { fen: string }
@@ -11,9 +13,64 @@ interface Props {
   player2Id: string;
 }
 
+const getThemeColors = (themeId: string) => {
+  switch (themeId) {
+    case 'dark': return { white: '#818cf8', black: '#1f2937' }; // Indigo-400 / Gray-800
+    case 'forest': return { white: '#d1fae5', black: '#064e3b' }; // Emerald-100 / Emerald-900
+    case 'wood': return { white: '#fde68a', black: '#451a03' }; // Amber-200 / Amber-950
+    case 'sunset': return { white: '#fed7aa', black: '#581c87' }; // Orange-200 / Purple-900
+    case 'silver': return { white: '#f3f4f6', black: '#1f2937' }; // Gray-100 / Gray-800
+    case 'metal': return { white: '#d4d4d8', black: '#18181b' }; // Zinc-300 / Zinc-900
+    default: return { white: undefined, black: undefined }; // Default
+  }
+};
+
 export const ChessGame: React.FC<Props> = ({ gameState, isMyTurn, isPlayer1, onMove, player1Id, player2Id }) => {
   const [game, setGame] = useState(new Chess());
+  const { activeThemeId } = useApp();
   const ChessboardAny = Chessboard as any;
+
+  const customPieces = useMemo(() => {
+    const pieces = ['p', 'n', 'b', 'r', 'q', 'k'];
+    const themeColors = getThemeColors(activeThemeId);
+    const pieceComponents: any = {};
+
+    pieces.forEach((p) => {
+      // White Pieces
+      pieceComponents[`w${p.toUpperCase()}`] = ({ squareWidth }: any) => {
+        const Icon = ChessPieceIcons.white[p];
+        return (
+          <div style={{ 
+            width: squareWidth, 
+            height: squareWidth, 
+            color: themeColors.white,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <Icon width="80%" height="80%" />
+          </div>
+        );
+      };
+      // Black Pieces
+      pieceComponents[`b${p.toUpperCase()}`] = ({ squareWidth }: any) => {
+        const Icon = ChessPieceIcons.black[p];
+        return (
+          <div style={{ 
+            width: squareWidth, 
+            height: squareWidth, 
+            color: themeColors.black,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <Icon width="80%" height="80%" />
+          </div>
+        );
+      };
+    });
+    return pieceComponents;
+  }, [activeThemeId]);
 
   useEffect(() => {
     if (gameState?.fen) {

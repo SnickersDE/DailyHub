@@ -109,7 +109,9 @@ export const GameBoardPage: React.FC = () => {
         <div className="w-10" /> {/* Spacer */}
       </div>
 
-      <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 overflow-hidden flex items-center justify-center p-4">
+      <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 overflow-hidden flex items-center justify-center p-4 relative">
+        <GameChat gameId={id || ''} />
+        
         {game.game_type === 'tictactoe' && (
           <TicTacToeGame 
             gameState={game.state} 
