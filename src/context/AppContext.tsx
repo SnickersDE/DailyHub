@@ -18,6 +18,7 @@ interface SavedState {
   unlockedThemeIds: string[];
   activeThemeId: string;
   unlockedAchievementIds: string[];
+  claimedAchievementIds: string[];
   lastResetDate: string;
   lastWeeklyResetDate: string;
 }
@@ -29,6 +30,7 @@ const defaultState: SavedState = {
   unlockedThemeIds: ['default'],
   activeThemeId: 'default',
   unlockedAchievementIds: [],
+  claimedAchievementIds: [],
   lastResetDate: new Date().toDateString(),
   lastWeeklyResetDate: new Date().toDateString(),
 };
@@ -298,17 +300,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
+  const claimAchievement = (id: string) => {
+    const achievement = ACHIEVEMENTS.find(a => a.id === id);
+    if (!achievement) return;
+    
+    // Check if unlocked and not already claimed
+    if (!savedState.unlockedAchievementIds.includes(id)) return;
+    if (savedState.claimedAchievementIds?.includes(id)) return;
+
+    setSavedState(prev => ({
+      ...prev,
+      points: prev.points + achievement.rewardPoints,
+      totalPointsEarned: prev.totalPointsEarned + achievement.rewardPoints,
+      claimedAchievementIds: [...(prev.claimedAchievementIds || []), id]
+    }));
+
+    playSound.success();
+    
+    // Confetti for claiming
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#FFD700', '#FFD700', '#DAA520'] // Gold colors
+    });
+  };
+
   return (
-    <AppContext.Provider value={{
-      ...appState,
-      addTask,
-      toggleTask,
-      deleteTask,
-      unlockTheme,
-      setTheme,
-      resetDailyTasks,
-      addPoints
-    }}>
+    <AppContext.Provider value={{ ...appState, addTask, toggleTask, deleteTask, unlockTheme, setTheme, resetDailyTasks, addPoints, claimAchievement }}>
       {children}
     </AppContext.Provider>
   );

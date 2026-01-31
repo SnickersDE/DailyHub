@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { Crown, Flag, Square, Hand, Scissors, HelpCircle } from 'lucide-react';
 import { initGame, isValidMove, resolveCombat } from '../../lib/freestyleChess';
 import type { GameState, PieceWithPos, Role } from '../../lib/freestyleChess';
+import { ChessPieceIcons } from './ChessPieceIcons';
 
 interface Props {
   gameState: any; 
@@ -20,6 +21,7 @@ export const FreestyleChessGame: React.FC<Props> = ({
   const [localState, setLocalState] = useState<GameState | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<PieceWithPos | null>(null);
   const [setupMode, setSetupMode] = useState<'role' | 'flag'>('role'); // For setup phase
+  const [roleChanges, setRoleChanges] = useState(0); // Track role changes
 
   useEffect(() => {
     if (!gameState || Object.keys(gameState).length === 0) {
@@ -28,6 +30,9 @@ export const FreestyleChessGame: React.FC<Props> = ({
       onMove(initial, player1Id); // Sync init
     } else {
       setLocalState(gameState);
+      // If we are loading state, we might want to know how many changes happened?
+      // Since we don't store roleChanges in GameState yet, we reset it on reload.
+      // This is acceptable for MVP as it resets per session or client.
     }
   }, [gameState]);
 
@@ -46,10 +51,15 @@ export const FreestyleChessGame: React.FC<Props> = ({
     const p = newBoard[pIndex];
 
     if (setupMode === 'role') {
+      if (roleChanges >= 3) {
+        alert("Du darfst nur 3 mal die Rollen ändern!");
+        return;
+      }
       // Cycle roles: Rock -> Paper -> Scissors -> Rock
       const roles: Role[] = ['rock', 'paper', 'scissors'];
       const currentIdx = roles.indexOf(p.role);
       p.role = roles[(currentIdx + 1) % 3];
+      setRoleChanges(c => c + 1);
     } else {
       // Toggle flag (only 1 allowed)
       if (p.hasFlag) {
@@ -68,6 +78,7 @@ export const FreestyleChessGame: React.FC<Props> = ({
     // Security Note: Opponent can see this traffic. Accepted for MVP.
     onMove({ ...localState, board: newBoard }, localState.turn);
   };
+
 
   const handleReady = () => {
     // Validate: 1 flag set?
@@ -100,6 +111,9 @@ export const FreestyleChessGame: React.FC<Props> = ({
     if (selectedPiece) {
       if (isValidMove(selectedPiece, row, col, localState.board)) {
         executeMove(selectedPiece, row, col, clickedPiece);
+        setSelectedPiece(null);
+      } else {
+        // If clicking another square and it's invalid, deselect
         setSelectedPiece(null);
       }
     }
@@ -138,13 +152,9 @@ export const FreestyleChessGame: React.FC<Props> = ({
       } else {
         newBoard[pIndex].isDead = true;
         log.push(`Verteidiger gewinnt!`);
-        if (piece.hasFlag) winnerId = target.owner; // Attacker lost flag carrier? No, flag carrier doesn't die if attacking unless it loses.
-        // "Wird die Flaggenfigur geschlagen, endet das Spiel sofort" -> Yes.
+        if (piece.hasFlag) winnerId = target.owner; 
       }
     }
-
-    // Check Flag captured (Attacker moved to empty square? No flag capture there)
-    // Only combat captures flags.
 
     onMove({ ...localState, board: newBoard, log, turn: nextTurn }, nextTurn, winnerId);
   };
@@ -154,55 +164,57 @@ export const FreestyleChessGame: React.FC<Props> = ({
     const piece = localState.board.find(p => p.row === row && p.col === col && !p.isDead);
     const isSelected = selectedPiece?.id === piece?.id;
     const isTarget = selectedPiece && isValidMove(selectedPiece, row, col, localState.board);
+    const isPossibleMove = isTarget && !piece;
+    const isPossibleAttack = isTarget && piece;
 
-    // Orientation: If I am P1 (Bottom), row 7 is bottom. 
-    // If I am P2 (Top), row 0 is bottom? No, usually board is flipped.
-    // Let's keep it simple: Row 0 top, Row 7 bottom always. P1 starts at bottom. P2 at top.
-    // If I am P2, I might want to see my pieces at bottom.
-    // Let's flip for P2.
-    // But logic uses absolute coords. Visual mapping needed.
-    
     return (
       <div 
         key={`${row}-${col}`}
         onClick={() => gameStarted ? handleSquareClick(row, col) : (piece && handleSetupClick(piece))}
         className={clsx(
-          "w-full h-full flex items-center justify-center relative",
-          (row + col) % 2 === 0 ? "bg-amber-100" : "bg-amber-800",
-          isSelected && "ring-4 ring-blue-500 z-10",
-          isTarget && !piece && "after:content-[''] after:w-4 after:h-4 after:bg-green-500/50 after:rounded-full",
-          isTarget && piece && "ring-4 ring-red-500 z-10"
+          "relative flex items-center justify-center w-full h-full", // Ensure full filling
+          (row + col) % 2 === 0 ? "bg-[#EBECD0]" : "bg-[#779556]", // Classic chess colors
+          isSelected && "after:content-[''] after:absolute after:inset-0 after:bg-yellow-400/50", // Highlight selection
+          isPossibleMove && "after:content-[''] after:absolute after:w-1/3 after:h-1/3 after:bg-black/20 after:rounded-full", // Dot for move
+          isPossibleAttack && "after:content-[''] after:absolute after:inset-0 after:border-4 after:border-red-500/50" // Ring for attack
         )}
       >
-        {piece && <PieceComponent piece={piece} isMine={piece.owner === myPlayerId} gameStarted={gameStarted} />}
-        {/* Coord labels for debugging */}
-        {/* <span className="absolute bottom-0 right-0 text-[8px] opacity-50">{row},{col}</span> */}
+        {piece && (
+          <PieceComponent 
+            piece={piece} 
+            isMine={piece.owner === myPlayerId} 
+            gameStarted={gameStarted}
+            pieceColor={piece.owner === player1Id ? 'white' : 'black'} 
+          />
+        )}
       </div>
     );
   };
 
-  // Flip board if P2
+  // Flip board if P2 (Standard: White at bottom)
   const rows = isPlayer1 ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
-  const cols = isPlayer1 ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0]; // Mirror cols too for correct left/right?
-  // Actually chess usually only flips rows. Left is still A.
-  // Let's stick to standard view: Row 0 top.
-  // If I am P2, I want Row 0 at bottom.
+  const cols = [0,1,2,3,4,5,6,7]; 
   
   return (
     <div className="flex flex-col gap-4 w-full max-w-[600px] mx-auto">
       {!gameStarted && (
         <div className="bg-white p-4 rounded-xl shadow-lg border border-yellow-200">
-          <h3 className="font-bold text-lg mb-2">Setup Phase</h3>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-bold text-lg">Setup Phase</h3>
+            <span className="text-sm font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">
+              Änderungen übrig: {3 - roleChanges}
+            </span>
+          </div>
           <div className="flex gap-4 mb-4">
             <button 
               onClick={() => setSetupMode('role')} 
-              className={clsx("px-4 py-2 rounded-lg flex items-center gap-2", setupMode === 'role' ? "bg-blue-500 text-white" : "bg-gray-100")}
+              className={clsx("px-4 py-2 rounded-lg flex items-center gap-2 transition-colors", setupMode === 'role' ? "bg-blue-600 text-white shadow-md" : "bg-gray-100 hover:bg-gray-200")}
             >
               <HelpCircle size={16} /> Rollen ändern
             </button>
             <button 
               onClick={() => setSetupMode('flag')} 
-              className={clsx("px-4 py-2 rounded-lg flex items-center gap-2", setupMode === 'flag' ? "bg-red-500 text-white" : "bg-gray-100")}
+              className={clsx("px-4 py-2 rounded-lg flex items-center gap-2 transition-colors", setupMode === 'flag' ? "bg-red-600 text-white shadow-md" : "bg-gray-100 hover:bg-gray-200")}
             >
               <Flag size={16} /> Flagge setzen
             </button>
@@ -212,65 +224,77 @@ export const FreestyleChessGame: React.FC<Props> = ({
               Klicke auf deine Figuren, um sie anzupassen.
             </div>
             {!myReady ? (
-              <button onClick={handleReady} className="bg-green-500 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-600">
+              <button onClick={handleReady} className="bg-green-500 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-600 transition-transform active:scale-95">
                 Bereit!
               </button>
             ) : (
-              <span className="text-green-600 font-bold">Warte auf Gegner...</span>
+              <span className="text-green-600 font-bold animate-pulse">Warte auf Gegner...</span>
             )}
           </div>
         </div>
       )}
 
-      {/* Board */}
-      <div className="grid grid-cols-8 gap-0 border-4 border-amber-900 rounded-sm shadow-2xl aspect-square bg-amber-100">
-        {rows.map(r => (
-          cols.map(c => renderSquare(r, c)) // Note: cols should probably not be reversed for Chess standard view, but for P2 view maybe? Let's assume standard Chessboard.tsx behavior: White at bottom.
-          // If I am P2 (Black), I want my pieces (Row 0,1) at bottom. So I need to iterate Rows 0->7? No, Row 0 is Top normally.
-          // Standard: Row 0 is Top (Black). Row 7 is Bottom (White).
-          // If I am P2 (Black), I want Row 0 at Bottom. So I render 0..7.
-          // If I am P1 (White), I want Row 7 at Bottom. So I render 0..7? No, HTML renders top-down.
-          // HTML: First div is Top.
-          // P1 View: Top is Row 0 (Enemy). Bottom is Row 7 (Me). -> Render 0 to 7.
-          // P2 View: Top is Row 7 (Enemy). Bottom is Row 0 (Me). -> Render 7 to 0.
-        ))}
+      {/* Board Container - Fixed Aspect Ratio */}
+      <div className="w-full aspect-square border-[8px] border-[#403A36] rounded shadow-2xl bg-[#312E2B]">
+        <div className="grid grid-cols-8 grid-rows-8 h-full w-full">
+          {rows.map(r => (
+            cols.map(c => renderSquare(r, c))
+          ))}
+        </div>
       </div>
 
       {/* Log */}
-      <div className="bg-black/80 text-white p-2 rounded-lg text-xs h-24 overflow-y-auto font-mono">
-        {localState.log.map((entry, i) => <div key={i}>{entry}</div>)}
+      <div className="bg-black/80 text-white p-3 rounded-lg text-xs h-32 overflow-y-auto font-mono shadow-inner border border-gray-700">
+        {localState.log.map((entry, i) => <div key={i} className="mb-1 opacity-90">{entry}</div>)}
       </div>
     </div>
   );
 };
 
-const PieceComponent: React.FC<{ piece: PieceWithPos, isMine: boolean, gameStarted: boolean }> = ({ piece, isMine }) => {
-  // Logic for displaying icon
-  // If Mine: Show Role + Flag (if set)
-  // If Enemy: Show '?' unless revealed
-  // If Game not started: Show everything for mine
-  
+const PieceComponent: React.FC<{ piece: PieceWithPos, isMine: boolean, gameStarted: boolean, pieceColor: string }> = ({ piece, isMine, pieceColor }) => {
   const showRole = isMine || piece.revealed;
   const showFlag = isMine && piece.hasFlag;
 
-  const getIcon = () => {
-    if (!showRole) return <HelpCircle size={24} className="text-gray-400" />;
+  // Map piece type/color to SVG
+  const typeMap: Record<string, string> = { 'p': 'p', 'r': 'r', 'n': 'n', 'b': 'b', 'q': 'q', 'k': 'k' };
+  const icon = ChessPieceIcons[pieceColor][typeMap[piece.type] || 'p'];
+
+  const getRoleIcon = () => {
+    if (!showRole) return <div className="bg-black/50 text-white rounded-full p-1"><HelpCircle size={12} /></div>;
     switch (piece.role) {
-      case 'rock': return <Square size={24} fill="currentColor" />;
-      case 'paper': return <Hand size={24} fill="currentColor" />;
-      case 'scissors': return <Scissors size={24} />;
+      case 'rock': return <div className="bg-blue-500 text-white rounded-full p-[2px] shadow-sm"><Square size={12} fill="currentColor" /></div>;
+      case 'paper': return <div className="bg-green-500 text-white rounded-full p-[2px] shadow-sm"><Hand size={12} fill="currentColor" /></div>;
+      case 'scissors': return <div className="bg-red-500 text-white rounded-full p-[2px] shadow-sm"><Scissors size={12} /></div>;
     }
   };
 
+
   return (
     <div className={clsx(
-      "w-4/5 h-4/5 rounded-full flex items-center justify-center relative shadow-sm border-2 transition-transform",
-      isMine ? "bg-white border-blue-500 text-blue-600" : "bg-gray-800 border-gray-600 text-gray-200",
-      piece.type === 'king' && "ring-2 ring-yellow-400"
+      "w-full h-full relative flex items-center justify-center select-none",
+      piece.hasFlag && "z-20" // Flag carrier on top
     )}>
-      {getIcon()}
-      {piece.type === 'king' && <Crown size={12} className="absolute -top-2 text-yellow-500 fill-yellow-500" />}
-      {showFlag && <Flag size={12} className="absolute -bottom-1 right-0 text-red-500 fill-red-500" />}
+      {/* Flag Indicator - Large Red Border/Glow */}
+      {showFlag && (
+        <div className="absolute inset-0 border-4 border-red-600 rounded-full animate-pulse opacity-70 pointer-events-none" />
+      )}
+
+      {/* Chess Piece SVG */}
+      <div className={clsx("w-[90%] h-[90%] transition-transform hover:scale-105", piece.isDead && "opacity-20")}>
+        {icon}
+      </div>
+
+      {/* Role Badge */}
+      <div className="absolute -top-1 -right-1 z-30 transform scale-110">
+        {getRoleIcon()}
+      </div>
+
+      {/* Flag Icon */}
+      {showFlag && (
+        <div className="absolute -bottom-1 -right-1 bg-red-600 text-white rounded-full p-1 shadow-lg z-30 border border-white">
+          <Flag size={14} fill="currentColor" />
+        </div>
+      )}
     </div>
   );
 };

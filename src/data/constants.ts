@@ -171,40 +171,213 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const ACHIEVEMENTS: Omit<Achievement, 'unlocked'>[] = [
+export const ACHIEVEMENTS: Omit<Achievement, 'unlocked' | 'claimed'>[] = [
+  // --- Tasks Completed ---
   {
     id: 'first_task',
     title: 'Aller Anfang',
     description: 'Erledige deine erste Aufgabe.',
     icon: 'CheckCircle',
-    condition: (state: AppState) => state.totalPointsEarned >= 1,
+    rewardPoints: 10,
+    condition: (state: AppState) => state.tasks.filter(t => t.completed).length >= 1,
   },
   {
+    id: 'task_master_10',
+    title: 'Aufgewärmt',
+    description: 'Erledige 10 Aufgaben.',
+    icon: 'CheckSquare',
+    rewardPoints: 20,
+    condition: (state: AppState) => state.tasks.filter(t => t.completed).length >= 10,
+  },
+  {
+    id: 'task_master_50',
+    title: 'Produktivitäts-Maschine',
+    description: 'Erledige 50 Aufgaben.',
+    icon: 'Briefcase',
+    rewardPoints: 50,
+    condition: (state: AppState) => state.tasks.filter(t => t.completed).length >= 50,
+  },
+  {
+    id: 'task_master_100',
+    title: 'Hundert!',
+    description: 'Erledige 100 Aufgaben.',
+    icon: 'Award',
+    rewardPoints: 100,
+    condition: (state: AppState) => state.tasks.filter(t => t.completed).length >= 100,
+  },
+  {
+    id: 'task_master_500',
+    title: 'Legende',
+    description: 'Erledige 500 Aufgaben.',
+    icon: 'Crown',
+    rewardPoints: 500,
+    condition: (state: AppState) => state.tasks.filter(t => t.completed).length >= 500,
+  },
+
+  // --- Points Earned (Total) ---
+  {
     id: 'point_collector',
-    title: 'Punktesammler',
-    description: 'Sammle 50 Punkte.',
+    title: 'Sparschwein',
+    description: 'Sammle insgesamt 50 Punkte.',
     icon: 'Coins',
+    rewardPoints: 10,
     condition: (state: AppState) => state.totalPointsEarned >= 50,
   },
+  {
+    id: 'point_collector_200',
+    title: 'Münzmeister',
+    description: 'Sammle insgesamt 200 Punkte.',
+    icon: 'Banknote',
+    rewardPoints: 30,
+    condition: (state: AppState) => state.totalPointsEarned >= 200,
+  },
+  {
+    id: 'point_collector_500',
+    title: 'Schatzsucher',
+    description: 'Sammle insgesamt 500 Punkte.',
+    icon: 'Gem',
+    rewardPoints: 75,
+    condition: (state: AppState) => state.totalPointsEarned >= 500,
+  },
+  {
+    id: 'point_collector_1000',
+    title: 'Millionär (fast)',
+    description: 'Sammle insgesamt 1000 Punkte.',
+    icon: 'Diamond',
+    rewardPoints: 150,
+    condition: (state: AppState) => state.totalPointsEarned >= 1000,
+  },
+
+  // --- Current Wealth ---
   {
     id: 'rich',
     title: 'Wohlhabend',
     description: 'Besitze 100 Punkte gleichzeitig.',
     icon: 'Wallet',
+    rewardPoints: 20,
     condition: (state: AppState) => state.points >= 100,
   },
+  {
+    id: 'very_rich',
+    title: 'Reich',
+    description: 'Besitze 300 Punkte gleichzeitig.',
+    icon: 'Safe',
+    rewardPoints: 50,
+    condition: (state: AppState) => state.points >= 300,
+  },
+
+  // --- Shopping & Themes ---
   {
     id: 'spender',
     title: 'Gönn dir',
     description: 'Kaufe dein erstes Theme.',
     icon: 'ShoppingBag',
+    rewardPoints: 15,
     condition: (state: AppState) => state.themes.filter(t => t.unlocked).length > 1,
+  },
+  {
+    id: 'theme_fan',
+    title: 'Modebewusst',
+    description: 'Schalte 3 Themes frei.',
+    icon: 'Palette',
+    rewardPoints: 30,
+    condition: (state: AppState) => state.themes.filter(t => t.unlocked).length >= 3,
   },
   {
     id: 'theme_collector',
     title: 'Sammler',
     description: 'Schalte 5 Themes frei.',
-    icon: 'Palette',
+    icon: 'Layers',
+    rewardPoints: 60,
     condition: (state: AppState) => state.themes.filter(t => t.unlocked).length >= 5,
-  }
+  },
+  {
+    id: 'shopaholic',
+    title: 'Shopaholic',
+    description: 'Schalte alle Themes frei.',
+    icon: 'Star',
+    rewardPoints: 200,
+    condition: (state: AppState) => state.themes.every(t => t.unlocked),
+  },
+
+  // --- Weekly Tasks ---
+  {
+    id: 'weekly_starter',
+    title: 'Wochenstart',
+    description: 'Erledige eine Wochenaufgabe.',
+    icon: 'Calendar',
+    rewardPoints: 15,
+    condition: (state: AppState) => state.tasks.some(t => t.type === 'weekly' && t.completed),
+  },
+  {
+    id: 'weekly_pro',
+    title: 'Wochenplaner',
+    description: 'Erledige 5 Wochenaufgaben.',
+    icon: 'CalendarDays',
+    rewardPoints: 50,
+    condition: (state: AppState) => state.tasks.filter(t => t.type === 'weekly' && t.completed).length >= 5,
+  },
+
+  // --- Monthly Tasks ---
+  {
+    id: 'monthly_hero',
+    title: 'Monatsheld',
+    description: 'Erledige eine Monatsaufgabe.',
+    icon: 'Trophy',
+    rewardPoints: 30,
+    condition: (state: AppState) => state.tasks.some(t => t.type === 'monthly' && t.completed),
+  },
+
+  // --- Games (Placeholder logic, assuming games played adds points/stats eventually) ---
+  // For now we check points as proxy for activity if we don't track game stats in AppState yet
+  {
+    id: 'gamer_points',
+    title: 'Spieler',
+    description: 'Erreiche 50 Punkte durch Spiele (Simuliert).',
+    icon: 'Gamepad2',
+    rewardPoints: 20,
+    condition: (state: AppState) => state.totalPointsEarned >= 50, // Duplicate condition but different flavor text
+  },
+  
+  // --- Misc ---
+  {
+    id: 'night_owl',
+    title: 'Nachteule',
+    description: 'Schalte den Nachtmodus frei.',
+    icon: 'Moon',
+    rewardPoints: 10,
+    condition: (state: AppState) => state.themes.find(t => t.id === 'dark')?.unlocked || false,
+  },
+  {
+    id: 'golden_boy',
+    title: 'Goldjunge',
+    description: 'Schalte das Gold-Theme frei.',
+    icon: 'Sun',
+    rewardPoints: 100,
+    condition: (state: AppState) => state.themes.find(t => t.id === 'gold')?.unlocked || false,
+  },
+  {
+    id: 'forest_walker',
+    title: 'Waldspaziergang',
+    description: 'Schalte das Wald-Theme frei.',
+    icon: 'Trees',
+    rewardPoints: 20,
+    condition: (state: AppState) => state.themes.find(t => t.id === 'forest')?.unlocked || false,
+  },
+  {
+    id: 'metal_head',
+    title: 'Metal Head',
+    description: 'Schalte das Metall-Theme frei.',
+    icon: 'Hammer',
+    rewardPoints: 25,
+    condition: (state: AppState) => state.themes.find(t => t.id === 'metal')?.unlocked || false,
+  },
+  {
+    id: 'rainbow_warrior',
+    title: 'Regenbogenkrieger',
+    description: 'Schalte das Regenbogen-Theme frei.',
+    icon: 'Zap',
+    rewardPoints: 150,
+    condition: (state: AppState) => state.themes.find(t => t.id === 'rainbow')?.unlocked || false,
+  },
 ];

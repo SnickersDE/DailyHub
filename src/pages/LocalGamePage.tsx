@@ -283,13 +283,14 @@ export const LocalGamePage: React.FC = () => {
           <FreestyleChessGame 
             gameState={freestyleState}
             isMyTurn={isMyTurn}
-            isPlayer1={true}
-            player1Id="player"
-            player2Id="cpu"
+            isPlayer1={activePlayerColor === 'white'}
+            player1Id={activePlayerColor === 'white' ? 'player' : 'cpu'}
+            player2Id={activePlayerColor === 'white' ? 'cpu' : 'player'}
             myPlayerId="player"
             onMove={(newState, nextTurnId) => handlePlayerMove(newState, nextTurnId)}
           />
         )}
+
       </div>
     </div>
   );

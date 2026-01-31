@@ -11,11 +11,10 @@ export const Layout: React.FC = () => {
   const navItems = [
     { to: '/', icon: CheckSquare, label: 'Täglich' },
     { to: '/weekly', icon: Calendar, label: 'Woche' },
-    { to: '/games', icon: Gamepad2, label: 'Spiele' },
     { to: '/monthly', icon: CalendarDays, label: 'Monat' },
-    { to: '/friends', icon: Users, label: 'Freunde' },
-    { to: '/points', icon: ShoppingBag, label: 'Shop' },
     { to: '/account', icon: User, label: 'Konto' },
+    { to: '/points', icon: ShoppingBag, label: 'Shop' },
+    { to: '/games', icon: Gamepad2, label: 'Spiele' },
   ];
 
   return (

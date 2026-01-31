@@ -15,6 +15,8 @@ export interface Achievement {
   description: string;
   icon: string;
   unlocked: boolean;
+  claimed: boolean;
+  rewardPoints: number;
   condition: (state: AppState) => boolean;
 }
 
@@ -80,4 +82,5 @@ export interface AppContextType extends AppState {
   setTheme: (id: string) => void;
   resetDailyTasks: () => void;
   addPoints: (amount: number) => void;
+  claimAchievement: (id: string) => void;
 }

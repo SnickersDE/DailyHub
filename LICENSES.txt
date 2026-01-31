@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2024 Lerninsel Statistik
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+This project uses the following open source libraries and APIs:
+
+1. React (MIT) - https://reactjs.org/
+2. Vite (MIT) - https://vitejs.dev/
+3. Supabase (Apache 2.0 / MIT) - https://supabase.com/
+4. Chess.js (BSD-2-Clause) - https://github.com/jhlywa/chess.js
+5. React-Chessboard (MIT) - https://github.com/Clariity/react-chessboard
+6. Lucide React (ISC) - https://lucide.dev/
+7. Tailwind CSS (MIT) - https://tailwindcss.com/
+8. Canvas Confetti (ISC) - https://github.com/catdad/canvas-confetti
+9. React Router (MIT) - https://reactrouter.com/
+
+Note: This software interacts with the Supabase API for backend services.
