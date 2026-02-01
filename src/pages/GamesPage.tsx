@@ -326,7 +326,8 @@ export const GamesPage: React.FC = () => {
               title="Samurai Schlacht"
               className="w-full h-full bg-black"
               srcDoc={samuraiSrcDoc}
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts allow-same-origin allow-fullscreen"
+              allowFullScreen
             />
           </div>
         </div>

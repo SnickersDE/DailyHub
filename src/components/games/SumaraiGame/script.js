@@ -47,6 +47,8 @@ function formatTime(ms) {
 }
 
 function getPlayerNumber(lobby, userId) {
+    const team = lobby.teams?.[userId];
+    if (team === 1 || team === 2) return team;
     const index = lobby.players.indexOf(userId);
     return index === -1 ? null : index + 1;
 }
@@ -180,6 +182,9 @@ class Game {
         const wasGameOver = this.gameOver;
         this.suppressSync = true;
         this.setState(state);
+        if (this.multiplayer) {
+            this.selectedCell = null;
+        }
         this.suppressSync = false;
         this.render();
         if (!wasGameOver && this.gameOver && this.winner) {
@@ -226,13 +231,15 @@ class Game {
         this.setupInProgress = true;
         this.showSetupModal(player, flagPos => {
             this.showPieceAssignmentModal(player, flagPos, assignments => {
-                this.applySetupToBoard(player, flagPos, assignments);
                 this.setupInProgress = false;
                 if (onConfirmed) {
                     onConfirmed({ flagPos, assignments });
                 }
-                this.render();
-                this.syncState();
+                if (!this.multiplayer) {
+                    this.applySetupToBoard(player, flagPos, assignments);
+                    this.render();
+                    this.syncState();
+                }
             });
         });
     }
@@ -536,12 +543,11 @@ class Game {
 
     handleCellClick(row, col) {
         if (this.gameOver || this.setupPhase) return;
-        if (this.multiplayer && this.currentPlayer !== this.playerNumber) return;
 
         const cell = this.board[row][col];
 
         if (!this.selectedCell) {
-            if (cell && cell.player === this.currentPlayer) {
+            if (cell) {
                 this.selectedCell = { row, col };
                 this.render();
             }
@@ -551,6 +557,15 @@ class Game {
         const { row: fromRow, col: fromCol } = this.selectedCell;
         
         if (fromRow === row && fromCol === col) {
+            this.selectedCell = null;
+            this.render();
+            return;
+        }
+
+        if (this.multiplayer) {
+            if (supabaseClient && currentLobbyId) {
+                applyMoveRealtime(currentLobbyId, [fromRow, fromCol], [row, col], this.turnIndex ?? 0);
+            }
             this.selectedCell = null;
             this.render();
             return;
@@ -966,8 +981,9 @@ class Game {
         const boardEl = document.getElementById('board');
         boardEl.innerHTML = '';
 
-        const validMoves = this.selectedCell ? 
-            this.getValidMoves(this.selectedCell.row, this.selectedCell.col) : [];
+        const validMoves = !this.multiplayer && this.selectedCell
+            ? this.getValidMoves(this.selectedCell.row, this.selectedCell.col)
+            : [];
 
         for (let row = 0; row < 6; row++) {
             for (let col = 0; col < 7; col++) {
@@ -1034,6 +1050,7 @@ const turnTimerEl = document.getElementById('turn-timer');
 const p1PenaltiesEl = document.getElementById('p1-penalties');
 const p2PenaltiesEl = document.getElementById('p2-penalties');
 const leaveLobbyBtn = document.getElementById('leave-lobby');
+const fullscreenBtn = document.getElementById('toggle-fullscreen');
 
 let state = { users: {}, lobbies: {}, updatedAt: Date.now() };
 let currentUser = null;
@@ -1073,6 +1090,7 @@ async function refreshLobbiesFromDb() {
             createdAt: new Date(lobby.created_at).getTime(),
             setupEndsAt: lobby.setup_ends_at ? new Date(lobby.setup_ends_at).getTime() : null,
             players: [],
+            teams: {},
             gameState: null,
             gameId: null,
             setupConfirmed: {},
@@ -1083,6 +1101,7 @@ async function refreshLobbiesFromDb() {
     (players || []).forEach(player => {
         if (!lobbyMap[player.lobby_id]) return;
         lobbyMap[player.lobby_id].players.push(player.user_id);
+        lobbyMap[player.lobby_id].teams[player.user_id] = player.team ?? null;
     });
 
     (games || []).forEach(game => {
@@ -1669,6 +1688,23 @@ createLobbyBtn.addEventListener('click', () => {
 leaveLobbyBtn.addEventListener('click', () => {
     leaveLobby();
 });
+
+function updateFullscreenLabel() {
+    if (!fullscreenBtn) return;
+    fullscreenBtn.textContent = document.fullscreenElement ? 'Minimieren' : 'Maximieren';
+}
+
+if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen?.();
+        } else {
+            document.exitFullscreen?.();
+        }
+    });
+    document.addEventListener('fullscreenchange', updateFullscreenLabel);
+    updateFullscreenLabel();
+}
 
 const externalUserName = window.SAMURAI_USER_NAME || window.AUTH_USER_NAME || window.SAMURAI_USER?.name;
 const externalUserId = window.SAMURAI_USER_ID || window.SAMURAI_USER?.id;

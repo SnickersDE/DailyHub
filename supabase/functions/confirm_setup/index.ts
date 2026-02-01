@@ -17,6 +17,30 @@ const getClient = () =>
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+type Board = Array<Array<Record<string, any> | null>>;
+
+const emptyBoard = (): Board =>
+  Array.from({ length: 6 }, () => Array.from({ length: 7 }, () => null));
+
+const applySetupToBoard = (
+  board: Board,
+  playerNumber: number,
+  setup: Record<string, any>,
+) => {
+  const next = board.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+  next[setup.flagPos.row][setup.flagPos.col] = { player: playerNumber, type: "e" };
+  for (const [key, type] of Object.entries(setup.assignments)) {
+    const [row, col] = key.split("-").map(Number);
+    const piece: Record<string, any> = { player: playerNumber, type };
+    if (type === "d") piece.swordLives = 3;
+    next[row][col] = piece;
+  }
+  return next;
+};
+
+const isAllowedSetupCell = (playerNumber: number, row: number) =>
+  playerNumber === 1 ? row === 0 || row === 1 : row === 4 || row === 5;
+
 const validateSetup = (setup: any) => {
   if (!setup?.flagPos || !setup?.assignments) return { ok: false, error: "invalid_payload" };
   const { flagPos, assignments } = setup;
@@ -68,9 +92,21 @@ export default async (req: Request) => {
 
   const members = (membersData || []) as Array<{ user_id: string }>;
   if (!members.some((m) => m.user_id === userId)) return json({ error: "not_in_lobby" }, 403);
+  const playerNumber =
+    userId === game.player1_id ? 1 : userId === game.player2_id ? 2 : null;
+  if (!playerNumber) return json({ error: "invalid_player" }, 403);
 
   const validation = validateSetup(setup);
   if (!validation.ok) return json({ error: validation.error }, 400);
+  if (!isAllowedSetupCell(playerNumber, setup.flagPos.row)) {
+    return json({ error: "invalid_flag_position" }, 400);
+  }
+  for (const key of Object.keys(setup.assignments)) {
+    const [row] = key.split("-").map(Number);
+    if (!isAllowedSetupCell(playerNumber, row)) {
+      return json({ error: "invalid_assignment_position" }, 400);
+    }
+  }
 
   const state = (game.state_json ?? {}) as Record<string, any>;
   const setups = { ...(state.setups ?? {}) } as Record<string, any>;
@@ -92,6 +128,15 @@ export default async (req: Request) => {
     const currentPlayerUserId = game.player1_id ?? members[0]?.user_id ?? null;
     const nextPlayerUserId =
       currentPlayerUserId === game.player1_id ? game.player2_id : game.player1_id;
+    let board = emptyBoard();
+    const p1Setup = setups[game.player1_id];
+    const p2Setup = setups[game.player2_id];
+    if (p1Setup) {
+      board = applySetupToBoard(board, 1, p1Setup);
+    }
+    if (p2Setup) {
+      board = applySetupToBoard(board, 2, p2Setup);
+    }
     updates.status = "playing";
     updates.turn_index = 1;
     updates.turn_ends_at = turnEndsAt;
@@ -99,7 +144,9 @@ export default async (req: Request) => {
     updates.current_turn = currentPlayerUserId;
     updates.state_json = {
       ...nextState,
+      board,
       setupPhase: false,
+      currentPlayer: currentPlayerUserId === game.player1_id ? 1 : 2,
       currentPlayerUserId,
       nextPlayerUserId,
       turnIndex: 1,
