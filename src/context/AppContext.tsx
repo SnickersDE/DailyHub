@@ -410,12 +410,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       claimedAchievementIds: [...(prev.claimedAchievementIds || []), id]
     }));
     if (user) {
-      void supabase
-        .from('user_unlocks')
-        .update({ claimed: true })
-        .eq('user_id', user.id)
-        .eq('item_id', id)
-        .eq('type', 'achievement');
+      const persist = async () => {
+        const { error } = await supabase.from('user_unlocks').upsert(
+          { user_id: user.id, item_id: id, type: 'achievement', claimed: true },
+          { onConflict: 'user_id,item_id,type' },
+        );
+        if (error) {
+          setSavedState(prev => ({
+            ...prev,
+            points: prev.points - achievement.rewardPoints,
+            totalPointsEarned: prev.totalPointsEarned - achievement.rewardPoints,
+            claimedAchievementIds: (prev.claimedAchievementIds || []).filter(claimedId => claimedId !== id),
+          }));
+        }
+      };
+      void persist();
     }
 
     playSound.success();
