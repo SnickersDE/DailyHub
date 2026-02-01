@@ -487,6 +487,12 @@ begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'user_stats') then
     alter publication supabase_realtime add table public.user_stats;
   end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'lobbies') then
+    alter publication supabase_realtime add table public.lobbies;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'lobby_members') then
+    alter publication supabase_realtime add table public.lobby_members;
+  end if;
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'games') then
     alter publication supabase_realtime add table public.games;
   end if;
@@ -585,6 +591,8 @@ where n.nspname = 'public' and c.relrowsecurity = false;
 with expected_realtime(table_name) as (
   values
     ('user_stats'),
+    ('lobbies'),
+    ('lobby_members'),
     ('games'),
     ('game_invites')
 )
