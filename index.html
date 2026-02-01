@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>app</title>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const path = params.get('p');
+        const query = params.get('q');
+        if (path) {
+          const decodedPath = decodeURIComponent(path);
+          const decodedQuery = query ? decodeURIComponent(query) : '';
+          const newUrl = window.location.pathname.replace(/\/$/, '') + decodedPath + decodedQuery + window.location.hash;
+          window.history.replaceState(null, '', newUrl);
+        }
+      })();
+    </script>
   </head>
   <body class="bg-gray-50 text-gray-900">
     <div id="root"></div>
