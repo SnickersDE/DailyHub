@@ -25,10 +25,43 @@ export const GameLobbyPage: React.FC = () => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteLoading, setInviteLoading] = useState<string | null>(null);
+  const [pendingInvite, setPendingInvite] = useState<{ id: string; friendName: string } | null>(null);
 
   useEffect(() => {
     if (user) fetchFriends();
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !pendingInvite) return;
+
+    const channel = supabase
+      .channel(`game_invite:${pendingInvite.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_invites',
+          filter: `id=eq.${pendingInvite.id}`
+        },
+        (payload) => {
+          const updatedInvite = payload.new as any;
+          if (updatedInvite.status === 'accepted' && updatedInvite.game_id) {
+            navigate(`/game/${updatedInvite.game_id}`);
+            return;
+          }
+          if (updatedInvite.status === 'declined') {
+            setPendingInvite(null);
+            alert('Einladung abgelehnt.');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [navigate, pendingInvite, user]);
 
   const fetchFriends = async () => {
     try {
@@ -56,20 +89,21 @@ export const GameLobbyPage: React.FC = () => {
     }
   };
 
-  const sendInvite = async (friendId: string) => {
-    setInviteLoading(friendId);
+  const sendInvite = async (friend: Friend) => {
+    setInviteLoading(friend.id);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('game_invites')
         .insert({
           sender_id: user!.id,
-          receiver_id: friendId,
+          receiver_id: friend.id,
           game_type: normalizedGameType
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
-      alert('Einladung gesendet!');
-      navigate('/games'); // Back to hub to wait
+      setPendingInvite({ id: data.id, friendName: friend.username });
     } catch (err) {
       console.error(err);
       alert('Fehler beim Senden.');
@@ -100,6 +134,17 @@ export const GameLobbyPage: React.FC = () => {
         </h2>
       </div>
 
+      {pendingInvite && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2 text-gray-900">
+          <div className="font-semibold">Warten auf Bestätigung</div>
+          <div className="text-sm">Einladung an {pendingInvite.friendName} gesendet.</div>
+          <div className="flex items-center gap-2 text-sm">
+            <Loader2 className="animate-spin" size={16} />
+            <span>Wird automatisch gestartet, sobald angenommen.</span>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-gray-900">
         {loading ? (
           <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-gray-900" /></div>
@@ -122,8 +167,8 @@ export const GameLobbyPage: React.FC = () => {
                   <span className="font-medium">{friend.username}</span>
                 </div>
                 <button
-                  onClick={() => sendInvite(friend.id)}
-                  disabled={inviteLoading === friend.id}
+                  onClick={() => sendInvite(friend)}
+                  disabled={inviteLoading === friend.id || !!pendingInvite}
                   className="px-4 py-2 bg-blue-500 text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {inviteLoading === friend.id ? <Loader2 className="animate-spin" size={16} /> : 'Einladen'}

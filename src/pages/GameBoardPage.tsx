@@ -20,6 +20,7 @@ export const GameBoardPage: React.FC = () => {
 
   const [game, setGame] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [rematchSecondsLeft, setRematchSecondsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -47,6 +48,43 @@ export const GameBoardPage: React.FC = () => {
     };
   }, [id, user]);
 
+  useEffect(() => {
+    if (!game?.state?.rematch?.expiresAt) {
+      setRematchSecondsLeft(null);
+      return;
+    }
+
+    const expiresAt = new Date(game.state.rematch.expiresAt).getTime();
+    const updateRemaining = () => {
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      setRematchSecondsLeft(remaining);
+    };
+
+    updateRemaining();
+    const interval = window.setInterval(updateRemaining, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [game?.state?.rematch?.expiresAt]);
+
+  useEffect(() => {
+    if (!game || game.game_type !== 'tictactoe' || game.status !== 'finished') return;
+    const rematch = game.state?.rematch;
+    if (!rematch?.requests || !rematch?.expiresAt) return;
+    const hasBoth = rematch.requests[game.player1_id] && rematch.requests[game.player2_id];
+    if (!hasBoth) return;
+    if (new Date(rematch.expiresAt).getTime() < Date.now()) return;
+    if (rematch.gameId) {
+      if (rematch.gameId !== id) {
+        navigate(`/game/${rematch.gameId}`);
+      }
+      return;
+    }
+    if (user?.id !== game.player1_id) return;
+    void createRematchGame(rematch);
+  }, [game, id, navigate, user?.id]);
+
   const fetchGame = async () => {
     try {
       const { data, error } = await supabase
@@ -66,12 +104,64 @@ export const GameBoardPage: React.FC = () => {
     }
   };
 
+  const createRematchGame = async (rematch: any) => {
+    try {
+      const { data: newGame, error } = await supabase
+        .from('games')
+        .insert({
+          game_type: 'tictactoe',
+          player1_id: game.player1_id,
+          player2_id: game.player2_id,
+          status: 'playing',
+          current_turn: game.player1_id,
+          state: { board: Array(9).fill(null) }
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase
+        .from('games')
+        .update({ state: { ...game.state, rematch: { ...rematch, gameId: newGame.id } } })
+        .eq('id', game.id);
+
+      navigate(`/game/${newGame.id}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRequestRematch = async () => {
+    if (!game || game.game_type !== 'tictactoe' || game.status !== 'finished' || !user) return;
+    const now = new Date();
+    const existing = game.state?.rematch;
+    const existingExpiresAt = existing?.expiresAt ? new Date(existing.expiresAt).getTime() : 0;
+    const isExpired = existingExpiresAt && existingExpiresAt < now.getTime();
+    const expiresAt = isExpired || !existingExpiresAt ? new Date(now.getTime() + 30000) : new Date(existingExpiresAt);
+    const requests = isExpired ? {} : (existing?.requests || {});
+    const nextRematch = {
+      requests: { ...requests, [user.id]: now.toISOString() },
+      expiresAt: expiresAt.toISOString(),
+      gameId: existing?.gameId
+    };
+
+    await supabase
+      .from('games')
+      .update({ state: { ...game.state, rematch: nextRematch } })
+      .eq('id', game.id);
+  };
+
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-white" /></div>;
   if (!game) return null;
 
   const isSupportedGame = game.game_type === 'tictactoe' || game.game_type === 'rps';
   const isPlayer1 = user?.id === game.player1_id;
   const isMyTurn = game.current_turn === user?.id;
+  const rematchRequests = game.state?.rematch?.requests || {};
+  const rematchExpiresAt = game.state?.rematch?.expiresAt ? new Date(game.state.rematch.expiresAt).getTime() : null;
+  const rematchExpired = rematchExpiresAt ? rematchExpiresAt < Date.now() : false;
+  const hasRequestedRematch = !!(user?.id && rematchRequests[user.id]);
 
   const handleUpdateGameState = async (newState: any, nextTurnId?: string, winnerId?: string) => {
     const updates: any = {
@@ -147,6 +237,24 @@ export const GameBoardPage: React.FC = () => {
          />
         )}
       </div>
+
+      {game.game_type === 'tictactoe' && game.status === 'finished' && (
+        <div className="flex flex-col items-center gap-2 text-gray-900">
+          <button
+            onClick={handleRequestRematch}
+            disabled={hasRequestedRematch || rematchExpired}
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {hasRequestedRematch ? 'Revanche angefragt' : 'Revanche fordern'}
+          </button>
+          {rematchSecondsLeft !== null && !rematchExpired && (
+            <div className="text-xs">Bestätigung läuft: {rematchSecondsLeft}s</div>
+          )}
+          {rematchExpired && (
+            <div className="text-xs">Revanche-Zeit abgelaufen.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
