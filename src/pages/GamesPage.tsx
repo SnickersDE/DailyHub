@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { Users, Sword, Brain, Hand } from 'lucide-react';
+import { Users, Sword, Brain, Hand, X } from 'lucide-react';
 import { clsx } from 'clsx';
+import samuraiHtmlRaw from '../components/games/SumaraiGame/index.html?raw';
+import samuraiCssRaw from '../components/games/SumaraiGame/style.css?raw';
+import samuraiJsRaw from '../components/games/SumaraiGame/script.js?raw';
 
 interface Invite {
   id: string;
@@ -21,6 +24,52 @@ export const GamesPage: React.FC = () => {
   const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
 
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [showSamurai, setShowSamurai] = useState(false);
+
+  const samuraiSrcDoc = useMemo(() => {
+    const backgroundUrl = new URL('../components/games/SumaraiGame/Background.png', import.meta.url).href;
+    const figurUrl = new URL('../components/games/SumaraiGame/Figur.png', import.meta.url).href;
+    const schereUrl = new URL('../components/games/SumaraiGame/Schere.png', import.meta.url).href;
+    const steinUrl = new URL('../components/games/SumaraiGame/Stein.png', import.meta.url).href;
+    const blattUrl = new URL('../components/games/SumaraiGame/Blatt.png', import.meta.url).href;
+    const schwertUrl = new URL('../components/games/SumaraiGame/Schwert.png', import.meta.url).href;
+    const fahneUrl = new URL('../components/games/SumaraiGame/Fahne.png', import.meta.url).href;
+    const videoSchereUrl = new URL('../components/games/SumaraiGame/Video Schere.mp4', import.meta.url).href;
+    const videoSteinUrl = new URL('../components/games/SumaraiGame/Video Stein.mp4', import.meta.url).href;
+    const videoBlattUrl = new URL('../components/games/SumaraiGame/Video Blatt.mp4', import.meta.url).href;
+
+    const css = samuraiCssRaw
+      .replaceAll('Background.png', backgroundUrl)
+      .replaceAll('Figur.png', figurUrl)
+      .replaceAll('Schere.png', schereUrl)
+      .replaceAll('Stein.png', steinUrl)
+      .replaceAll('Blatt.png', blattUrl)
+      .replaceAll('Schwert.png', schwertUrl)
+      .replaceAll('Fahne.png', fahneUrl);
+
+    const js = samuraiJsRaw
+      .replaceAll('Video Schere.mp4', videoSchereUrl)
+      .replaceAll('Video Stein.mp4', videoSteinUrl)
+      .replaceAll('Video Blatt.mp4', videoBlattUrl);
+
+    const bodyMatch = samuraiHtmlRaw.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1] : samuraiHtmlRaw;
+
+    return `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>侍の戦い - Samurai Schlacht</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Kosugi+Maru&display=swap" rel="stylesheet" />
+  <style>${css}</style>
+</head>
+<body>
+  ${bodyContent}
+  <script>${js}</script>
+</body>
+</html>`;
+  }, []);
 
   // Listen for invites
   useEffect(() => {
@@ -216,7 +265,43 @@ export const GamesPage: React.FC = () => {
              </button>
            </div>
         </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-gray-900">
+          <div className="p-6 flex items-center gap-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-700">
+              <Sword size={32} />
+            </div>
+            <div className="text-left flex-1">
+              <h3 className="text-lg font-bold">Samurai Schlacht</h3>
+              <p className="text-sm">Strategisches Duell mit Lobbys.</p>
+            </div>
+          </div>
+          <div className="flex border-t border-gray-100">
+            <button onClick={() => setShowSamurai(true)} className="flex-1 p-3 text-sm font-bold text-gray-900 hover:bg-gray-50 flex items-center justify-center gap-2">
+              Starten
+            </button>
+          </div>
+        </div>
       </div>
+
+      {showSamurai && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
+          <div className="w-full max-w-5xl bg-white rounded-t-2xl shadow-2xl h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <div className="font-bold text-gray-900">Samurai Schlacht</div>
+              <button onClick={() => setShowSamurai(false)} className="p-2 rounded-full hover:bg-gray-100 text-gray-900">
+                <X size={18} />
+              </button>
+            </div>
+            <iframe
+              title="Samurai Schlacht"
+              className="w-full h-full bg-black"
+              srcDoc={samuraiSrcDoc}
+              sandbox="allow-scripts allow-same-origin"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
