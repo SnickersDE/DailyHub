@@ -32,15 +32,30 @@ export const AccountPage: React.FC = () => {
   }
 
   const handleUpdateName = async () => {
+    if (!user) return;
     if (!newName.trim() || newName === profile?.username) {
       setEditingName(false);
       return;
     }
 
     try {
+      const trimmedName = newName.trim();
+      const { data: existingProfile, error: existingError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', trimmedName)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+      if (existingProfile && existingProfile.id !== user?.id) {
+        alert('Dieser Name ist bereits vergeben.');
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, username: newName.trim() }, { onConflict: 'id' });
+        .update({ username: trimmedName })
+        .eq('id', user.id);
 
       if (error) throw error;
       window.location.reload();

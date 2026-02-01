@@ -107,8 +107,19 @@ export const GamesPage: React.FC = () => {
           table: 'game_invites',
           filter: `receiver_id=eq.${user.id}`
         },
-        () => {
+        async (payload) => {
           // New invite received
+          const newInvite = payload.new as Invite;
+          if (newInvite.game_type !== 'tictactoe' && newInvite.game_type !== 'rps') return;
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', newInvite.sender_id)
+            .maybeSingle();
+          setInvites(prev => [
+            { ...newInvite, sender: senderProfile || undefined },
+            ...prev.filter(invite => invite.id !== newInvite.id)
+          ]);
           fetchInvites();
           // Ideally show a toast here
           alert('Neue Spieleinladung erhalten!');
@@ -147,7 +158,8 @@ export const GamesPage: React.FC = () => {
           sender:profiles!sender_id(username, avatar_url)
         `)
         .eq('receiver_id', user.id)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       const filteredInvites = (data || []).filter((invite: Invite) => invite.game_type === 'tictactoe' || invite.game_type === 'rps');
@@ -216,29 +228,33 @@ export const GamesPage: React.FC = () => {
             <Users size={18} />
             Offene Einladungen
           </h3>
-          {invites.map(invite => (
-            <div key={invite.id} className="bg-white p-3 rounded-lg shadow-sm flex items-center justify-between text-gray-900">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                  {invite.sender?.avatar_url ? (
-                    <img src={invite.sender.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-900 font-bold">
-                      {invite.sender?.username.substring(0, 2)}
-                    </div>
-                  )}
+          {invites.map(invite => {
+            const inviteName = invite.sender?.username || 'Unbekannt';
+            const inviteInitials = inviteName.slice(0, 2).toUpperCase();
+            return (
+              <div key={invite.id} className="bg-white p-3 rounded-lg shadow-sm flex items-center justify-between text-gray-900">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                    {invite.sender?.avatar_url ? (
+                      <img src={invite.sender.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-900 font-bold">
+                        {inviteInitials}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-medium">{inviteName}</div>
+                    <div className="text-xs text-gray-900">möchte {invite.game_type} spielen</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium">{invite.sender?.username}</div>
-                  <div className="text-xs text-gray-900">möchte {invite.game_type} spielen</div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleAcceptInvite(invite)} className="px-3 py-1 bg-green-500 text-white rounded text-xs font-bold hover:bg-green-600">Annehmen</button>
+                  <button onClick={() => handleDeclineInvite(invite.id)} className="px-3 py-1 bg-gray-200 text-gray-900 rounded text-xs hover:bg-gray-300">X</button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleAcceptInvite(invite)} className="px-3 py-1 bg-green-500 text-white rounded text-xs font-bold hover:bg-green-600">Annehmen</button>
-                <button onClick={() => handleDeclineInvite(invite.id)} className="px-3 py-1 bg-gray-200 text-gray-900 rounded text-xs hover:bg-gray-300">X</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

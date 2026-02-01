@@ -25,7 +25,7 @@ export const Layout: React.FC = () => {
         <div className="flex justify-between items-center max-w-md mx-auto">
           <div className="relative">
             <h1 className="text-xl font-bold bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 bg-clip-text text-transparent animate-rainbow">
-              ADHS Checkliste
+              DAILYHUB
             </h1>
             <Sparkles className="absolute -top-3 -right-5 text-yellow-400 animate-twinkle" size={18} />
             <Sparkles className="absolute -bottom-2 -left-5 text-yellow-400 animate-twinkle" style={{ animationDelay: '0.5s' }} size={14} />

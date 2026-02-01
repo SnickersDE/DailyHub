@@ -335,31 +335,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const unlockTheme = (id: string) => {
     const theme = THEMES.find(t => t.id === id);
     if (!theme) return;
+    if (!user) return;
     if (savedState.unlockedThemeIds.includes(id)) return;
     if (savedState.points < theme.cost) return;
 
-    setSavedState(prev => ({
-      ...prev,
-      points: prev.points - theme.cost,
-      unlockedThemeIds: [...prev.unlockedThemeIds, id],
-    }));
-    if (user) {
-      const save = async () => {
+    const save = async () => {
+      try {
         const { error } = await supabase.from('user_unlocks').upsert(
           { user_id: user.id, item_id: id, type: 'theme', claimed: false },
           { onConflict: 'user_id,item_id,type' },
         );
-        if (error) {
-          setSavedState(prev => ({
-            ...prev,
-            points: prev.points + theme.cost,
-            unlockedThemeIds: prev.unlockedThemeIds.filter(themeId => themeId !== id),
-          }));
-        }
-      };
-      void save();
-    }
-    playSound.purchase();
+        if (error) throw error;
+        setSavedState(prev => ({
+          ...prev,
+          points: prev.points - theme.cost,
+          unlockedThemeIds: [...prev.unlockedThemeIds, id],
+        }));
+        playSound.purchase();
+      } catch (err) {
+        console.error('Error unlocking theme:', err);
+      }
+    };
+    void save();
   };
 
   const setTheme = (id: string) => {
