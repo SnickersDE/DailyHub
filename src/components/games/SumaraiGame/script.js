@@ -1143,33 +1143,46 @@ async function realtimeInit() {
 
 async function joinLobbyRealtime(lobbyId) {
     if (!supabaseClient) return;
-    await supabaseClient.functions.invoke("join_lobby", {
+    const { error } = await supabaseClient.functions.invoke("join_lobby", {
         body: { lobbyId, userId: currentUser.id }
     });
+    if (error) {
+        alert('Lobby konnte nicht beigetreten werden.');
+    }
 }
 
 async function confirmSetupRealtime(lobbyId, setup) {
     if (!supabaseClient) return;
-    await supabaseClient.functions.invoke("confirm_setup", {
+    const { error } = await supabaseClient.functions.invoke("confirm_setup", {
         body: { lobbyId, userId: currentUser.id, setup }
     });
+    if (error) {
+        alert('Aufstellung konnte nicht gespeichert werden.');
+    }
 }
 
 async function applyMoveRealtime(lobbyId, from, to, turnIndex, duel) {
     if (!supabaseClient) return;
-    await supabaseClient.functions.invoke("apply_move", {
+    const { error } = await supabaseClient.functions.invoke("apply_move", {
         body: { lobbyId, userId: currentUser.id, from, to, turnIndex, duel }
     });
+    if (error) {
+        alert('Zug konnte nicht ausgeführt werden.');
+    }
 }
 
 async function createLobbyRealtime(lobbyName) {
     if (!supabaseClient || !currentUser) return;
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    const { data } = await supabaseClient
+    const { data, error } = await supabaseClient
         .from("lobbies")
         .insert({ name: lobbyName, owner_id: currentUser.id, code })
         .select()
         .single();
+    if (error) {
+        alert('Lobby konnte nicht erstellt werden.');
+        return;
+    }
     if (data?.id) {
         await joinLobbyRealtime(data.id);
         currentLobbyId = data.id;

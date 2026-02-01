@@ -344,10 +344,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       unlockedThemeIds: [...prev.unlockedThemeIds, id],
     }));
     if (user) {
-      void supabase.from('user_unlocks').upsert(
-        { user_id: user.id, item_id: id, type: 'theme', claimed: false },
-        { onConflict: 'user_id,item_id,type' },
-      );
+      const save = async () => {
+        const { error } = await supabase.from('user_unlocks').upsert(
+          { user_id: user.id, item_id: id, type: 'theme', claimed: false },
+          { onConflict: 'user_id,item_id,type' },
+        );
+        if (error) {
+          setSavedState(prev => ({
+            ...prev,
+            points: prev.points + theme.cost,
+            unlockedThemeIds: prev.unlockedThemeIds.filter(themeId => themeId !== id),
+          }));
+        }
+      };
+      void save();
     }
     playSound.purchase();
   };

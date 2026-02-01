@@ -40,13 +40,10 @@ export const AccountPage: React.FC = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ username: newName.trim() })
-        .eq('id', user.id);
+        .upsert({ id: user.id, username: newName.trim() }, { onConflict: 'id' });
 
       if (error) throw error;
-      
-      // Force reload page to refresh context (simple way) or rely on AuthContext subscription
-      window.location.reload(); 
+      window.location.reload();
     } catch (error) {
       alert('Fehler beim Aktualisieren des Namens.');
       console.error(error);
