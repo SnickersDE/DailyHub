@@ -82,7 +82,7 @@ export const GameChat: React.FC<Props> = ({ gameId }) => {
       isOpen ? "w-80" : "w-auto"
     )}>
       {isOpen && (
-        <div className="bg-white rounded-t-xl rounded-bl-xl shadow-2xl border border-gray-200 w-full overflow-hidden mb-2 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="bg-white rounded-t-xl rounded-bl-xl shadow-2xl border border-gray-200 w-full overflow-hidden mb-2 animate-in slide-in-from-bottom-5 fade-in duration-300 text-gray-900">
           {/* Header */}
           <div className="bg-blue-600 text-white p-3 font-bold flex justify-between items-center">
             <span>Chat</span>
@@ -94,7 +94,7 @@ export const GameChat: React.FC<Props> = ({ gameId }) => {
           {/* Messages */}
           <div ref={scrollRef} className="h-64 overflow-y-auto p-3 space-y-2 bg-gray-50">
             {messages.length === 0 && (
-              <div className="text-center text-gray-400 text-sm mt-4">Schreib etwas...</div>
+              <div className="text-center text-gray-900 text-sm mt-4">Schreib etwas...</div>
             )}
             {messages.map(msg => {
               const isMe = msg.sender_id === user?.id;
@@ -102,11 +102,11 @@ export const GameChat: React.FC<Props> = ({ gameId }) => {
                 <div key={msg.id} className={clsx("flex flex-col", isMe ? "items-end" : "items-start")}>
                   <div className={clsx(
                     "max-w-[85%] px-3 py-2 rounded-lg text-sm shadow-sm",
-                    isMe ? "bg-blue-500 text-white rounded-br-none" : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
+                    isMe ? "bg-blue-500 text-white rounded-br-none" : "bg-white text-gray-900 border border-gray-200 rounded-bl-none"
                   )}>
                     {msg.text}
                   </div>
-                  <span className="text-[10px] text-gray-400 mt-1 px-1">
+                  <span className="text-[10px] text-gray-900 mt-1 px-1">
                     {isMe ? 'Du' : msg.sender_name} • {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export const GameChat: React.FC<Props> = ({ gameId }) => {
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
           "p-4 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center relative",
-          isOpen ? "bg-gray-200 text-gray-600" : "bg-blue-600 text-white"
+          isOpen ? "bg-gray-200 text-gray-900" : "bg-blue-600 text-white"
         )}
       >
         <MessageSquare size={24} />

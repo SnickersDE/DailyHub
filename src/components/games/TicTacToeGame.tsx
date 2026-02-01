@@ -67,12 +67,12 @@ export const TicTacToeGame: React.FC<Props> = ({ gameState, isMyTurn, onMove, my
       </div>
       
       {winner && (
-        <div className="animate-bounce text-2xl font-bold text-yellow-500 drop-shadow-sm">
+        <div className="animate-bounce text-2xl font-bold text-gray-900 drop-shadow-sm">
           {winner} hat gewonnen!
         </div>
       )}
       {!winner && !board.includes(null) && (
-         <div className="text-xl font-bold text-gray-500">Unentschieden!</div>
+         <div className="text-xl font-bold text-gray-900">Unentschieden!</div>
       )}
     </div>
   );

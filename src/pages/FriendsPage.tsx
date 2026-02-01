@@ -30,6 +30,7 @@ export const FriendsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'friends'>('leaderboard');
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('weekly');
   const [searchQuery, setSearchQuery] = useState('');
+  const primaryTextClass = activeTheme.colors.primary.includes('text-') ? '' : 'text-white';
   
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -249,13 +250,13 @@ export const FriendsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col items-center justify-center gap-4 relative">
-        <h2 className="text-2xl font-bold text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] text-center w-full">Social Hub</h2>
+        <h2 className={clsx("text-2xl font-bold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] text-center w-full", activeTheme.colors.text)}>Social Hub</h2>
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('leaderboard')}
             className={clsx(
               "p-2 rounded-lg transition-colors",
-              activeTab === 'leaderboard' ? activeTheme.colors.primary + " text-white" : "bg-gray-200 text-gray-600"
+              activeTab === 'leaderboard' ? clsx(activeTheme.colors.primary, primaryTextClass) : "bg-gray-200 text-gray-900"
             )}
           >
             <Trophy size={20} />
@@ -264,7 +265,7 @@ export const FriendsPage: React.FC = () => {
             onClick={() => setActiveTab('friends')}
             className={clsx(
               "p-2 rounded-lg transition-colors",
-              activeTab === 'friends' ? activeTheme.colors.primary + " text-white" : "bg-gray-200 text-gray-600"
+              activeTab === 'friends' ? clsx(activeTheme.colors.primary, primaryTextClass) : "bg-gray-200 text-gray-900"
             )}
           >
             <Users size={20} />
@@ -285,7 +286,7 @@ export const FriendsPage: React.FC = () => {
                     "px-4 py-1.5 rounded-lg text-sm font-medium transition-all",
                     timeFrame === tf 
                       ? "bg-white text-gray-900 shadow-sm" 
-                      : "text-gray-500 hover:text-gray-700"
+                      : "text-gray-900 hover:text-gray-900"
                   )}
                 >
                   {getTimeFrameLabel(tf)}
@@ -303,7 +304,7 @@ export const FriendsPage: React.FC = () => {
               <button onClick={fetchFriends} className="mt-2 text-xs bg-red-100 px-3 py-1 rounded hover:bg-red-200 transition-colors text-red-700">Erneut versuchen</button>
             </div>
           ) : sortedFriends.length === 0 ? (
-            <div className="text-center text-gray-500 py-10">
+            <div className="text-center text-gray-900 py-10">
               Noch keine Freunde. Füge jemanden hinzu!
             </div>
           ) : (
@@ -314,13 +315,13 @@ export const FriendsPage: React.FC = () => {
                   {/* 2nd Place */}
                   {sortedFriends[1] && (
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-gray-400 flex items-center justify-center text-xl font-bold text-gray-600 uppercase">
+                      <div className="w-16 h-16 rounded-full bg-gray-300 border-4 border-gray-400 flex items-center justify-center text-xl font-bold text-gray-900 uppercase">
                         {sortedFriends[1].username.substring(0, 2)}
                       </div>
-                      <div className="flex flex-col items-center bg-gray-200/50 p-3 rounded-t-lg w-24 h-28 justify-end relative">
+                      <div className="flex flex-col items-center bg-gray-200/50 p-3 rounded-t-lg w-24 h-28 justify-end relative text-gray-900">
                         <div className="absolute -top-3 bg-gray-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">#2</div>
-                        <span className="font-bold text-gray-700 truncate w-full text-center">{sortedFriends[1].username}</span>
-                        <span className="text-xs text-gray-500">{getPoints(sortedFriends[1])} Pkt</span>
+                        <span className="font-bold truncate w-full text-center">{sortedFriends[1].username}</span>
+                        <span className="text-xs">{getPoints(sortedFriends[1])} Pkt</span>
                       </div>
                     </div>
                   )}
@@ -332,10 +333,10 @@ export const FriendsPage: React.FC = () => {
                       <div className="w-20 h-20 rounded-full bg-yellow-100 border-4 border-yellow-400 flex items-center justify-center text-2xl font-bold text-yellow-700 shadow-lg uppercase">
                          {sortedFriends[0].username.substring(0, 2)}
                       </div>
-                      <div className="flex flex-col items-center bg-gradient-to-b from-yellow-100 to-yellow-50/50 p-3 rounded-t-lg w-28 h-36 justify-end relative shadow-sm">
+                      <div className="flex flex-col items-center bg-gradient-to-b from-yellow-100 to-yellow-50/50 p-3 rounded-t-lg w-28 h-36 justify-end relative shadow-sm text-gray-900">
                         <div className="absolute -top-3 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">#1</div>
-                        <span className="font-bold text-gray-800 truncate w-full text-center">{sortedFriends[0].username}</span>
-                        <span className="text-sm text-yellow-700 font-bold">{getPoints(sortedFriends[0])} Pkt</span>
+                        <span className="font-bold truncate w-full text-center">{sortedFriends[0].username}</span>
+                        <span className="text-sm font-bold">{getPoints(sortedFriends[0])} Pkt</span>
                       </div>
                     </div>
                   )}
@@ -346,10 +347,10 @@ export const FriendsPage: React.FC = () => {
                       <div className="w-16 h-16 rounded-full bg-orange-100 border-4 border-orange-300 flex items-center justify-center text-xl font-bold text-orange-700 uppercase">
                          {sortedFriends[2].username.substring(0, 2)}
                       </div>
-                      <div className="flex flex-col items-center bg-orange-50/50 p-3 rounded-t-lg w-24 h-20 justify-end relative">
+                      <div className="flex flex-col items-center bg-orange-50/50 p-3 rounded-t-lg w-24 h-20 justify-end relative text-gray-900">
                         <div className="absolute -top-3 bg-orange-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">#3</div>
-                        <span className="font-bold text-gray-700 truncate w-full text-center">{sortedFriends[2].username}</span>
-                        <span className="text-xs text-gray-500">{getPoints(sortedFriends[2])} Pkt</span>
+                        <span className="font-bold truncate w-full text-center">{sortedFriends[2].username}</span>
+                        <span className="text-xs">{getPoints(sortedFriends[2])} Pkt</span>
                       </div>
                     </div>
                   )}
@@ -357,13 +358,13 @@ export const FriendsPage: React.FC = () => {
               )}
 
               {/* List View */}
-              <div className="bg-white/50 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm border border-gray-100">
+              <div className="bg-white/50 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm border border-gray-100 text-gray-900">
                 {/* Show top 10 friends, including podium places for full visibility as requested */}
                 {sortedFriends.slice(0, 10).map((friend, index) => (
                   <div key={friend.id} className="flex items-center justify-between p-4 border-b border-gray-100 last:border-0 hover:bg-white/80 transition-colors">
                     <div className="flex items-center gap-3">
-                      <span className={clsx("font-mono w-6 text-center font-bold", index < 3 ? "text-yellow-600" : "text-gray-400")}>{index + 1}</span>
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 uppercase">
+                      <span className="font-mono w-6 text-center font-bold">{index + 1}</span>
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-900 uppercase">
                         {friend.avatar_url ? (
                           <img src={friend.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
                         ) : (
@@ -371,15 +372,15 @@ export const FriendsPage: React.FC = () => {
                         )}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">{friend.username}</div>
-                        <div className="text-xs text-gray-500">{getTasksCount(friend)} Aufgaben erledigt</div>
+                        <div className="font-medium">{friend.username}</div>
+                        <div className="text-xs">{getTasksCount(friend)} Aufgaben erledigt</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="font-bold text-gray-700">{getPoints(friend)} Pkt</div>
+                      <div className="font-bold">{getPoints(friend)} Pkt</div>
                       <button 
                         onClick={() => navigate(`/friend/${friend.id}`)}
-                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-900 hover:text-gray-900 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Profil ansehen"
                       >
                         <Eye size={18} />
@@ -396,20 +397,20 @@ export const FriendsPage: React.FC = () => {
       {activeTab === 'friends' && (
         <div className="space-y-6">
           {/* Add Friend */}
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-4 text-gray-900">
+            <h3 className="font-semibold flex items-center gap-2">
               <UserPlus size={18} />
               Freund hinzufügen
             </h3>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-900" size={16} />
                 <input
                   type="text"
                   placeholder="Freundes-Code eingeben..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase"
+                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase"
                 />
               </div>
               <button 
@@ -426,17 +427,17 @@ export const FriendsPage: React.FC = () => {
             </div>
             
             <div className="pt-2 border-t border-gray-100">
-              <div className="text-xs text-gray-500 mb-2">Dein Einladungs-Code</div>
+              <div className="text-xs text-gray-900 mb-2">Dein Einladungs-Code</div>
               <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 border-dashed group cursor-pointer" onClick={() => {
                 if (profile?.friend_code) {
                   navigator.clipboard.writeText(profile.friend_code);
                   alert('Code kopiert!');
                 }
               }}>
-                <code className="flex-1 text-center font-mono text-lg font-bold tracking-wider text-gray-700">
+                <code className="flex-1 text-center font-mono text-lg font-bold tracking-wider text-gray-900">
                   {profile?.friend_code || 'Loading...'}
                 </code>
-                <button className="p-1.5 hover:bg-gray-200 rounded-md text-gray-500 transition-colors">
+                <button className="p-1.5 hover:bg-gray-200 rounded-md text-gray-900 transition-colors">
                   <Copy size={16} />
                 </button>
               </div>
@@ -445,9 +446,9 @@ export const FriendsPage: React.FC = () => {
 
           {/* Friend List */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-gray-500 px-1">Deine Freunde ({friends.length - 1})</h3>
+            <h3 className="text-sm font-medium text-gray-900 px-1">Deine Freunde ({friends.length - 1})</h3>
             {friends.filter(f => f.id !== user.id).map(friend => (
-              <div key={friend.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => navigate(`/friend/${friend.id}`)}>
+              <div key={friend.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors text-gray-900" onClick={() => navigate(`/friend/${friend.id}`)}>
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold uppercase overflow-hidden">
@@ -459,15 +460,15 @@ export const FriendsPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">{friend.username}</div>
-                    <div className="text-xs text-gray-500">{friend.points} Punkte</div>
+                    <div className="font-medium">{friend.username}</div>
+                    <div className="text-xs">{friend.points} Punkte</div>
                   </div>
                 </div>
-                <Eye size={18} className="text-gray-400" />
+                <Eye size={18} className="text-gray-900" />
               </div>
             ))}
             {friends.length <= 1 && (
-               <div className="text-center text-gray-400 py-4 text-sm">
+               <div className="text-center text-gray-900 py-4 text-sm">
                  Du hast noch keine Freunde hinzugefügt.
                </div>
             )}

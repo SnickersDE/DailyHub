@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 import { Loader2, ArrowLeft } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface Friend {
   id: string;
@@ -14,7 +16,11 @@ export const GameLobbyPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const gameType = searchParams.get('type') || 'tictactoe';
   const { user } = useAuth();
+  const { themes, activeThemeId } = useApp();
   const navigate = useNavigate();
+  const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
+  const allowedTypes = ['tictactoe', 'rps'] as const;
+  const normalizedGameType = allowedTypes.includes(gameType as (typeof allowedTypes)[number]) ? gameType : 'tictactoe';
 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +64,7 @@ export const GameLobbyPage: React.FC = () => {
         .insert({
           sender_id: user!.id,
           receiver_id: friendId,
-          game_type: gameType
+          game_type: normalizedGameType
         });
 
       if (error) throw error;
@@ -73,11 +79,9 @@ export const GameLobbyPage: React.FC = () => {
   };
 
   const getGameName = () => {
-    switch(gameType) {
-      case 'chess': return 'Schach';
+    switch(normalizedGameType) {
       case 'tictactoe': return 'Tic-Tac-Toe';
       case 'rps': return 'Schere Stein Papier';
-      case 'freestyle_chess': return 'Freestyle Chess';
       default: return 'Spiel';
     }
   };
@@ -87,20 +91,20 @@ export const GameLobbyPage: React.FC = () => {
       <div className="flex items-center gap-4">
         <button 
           onClick={() => navigate('/games')}
-          className="p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition-colors"
+          className={clsx("p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full transition-colors", activeTheme.colors.text)}
         >
           <ArrowLeft size={20} />
         </button>
-        <h2 className="text-2xl font-bold text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">
+        <h2 className={clsx("text-2xl font-bold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]", activeTheme.colors.text)}>
           {getGameName()} - Gegner wählen
         </h2>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-gray-900">
         {loading ? (
-          <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-gray-400" /></div>
+          <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-gray-900" /></div>
         ) : friends.length === 0 ? (
-          <div className="p-10 text-center text-gray-500">
+          <div className="p-10 text-center text-gray-900">
             Du hast noch keine Freunde. Füge erst jemanden im Social Hub hinzu!
           </div>
         ) : (
@@ -115,7 +119,7 @@ export const GameLobbyPage: React.FC = () => {
                       friend.username.substring(0, 2)
                     )}
                   </div>
-                  <span className="font-medium text-gray-900">{friend.username}</span>
+                  <span className="font-medium">{friend.username}</span>
                 </div>
                 <button
                   onClick={() => sendInvite(friend.id)}

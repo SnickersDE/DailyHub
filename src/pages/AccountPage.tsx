@@ -105,7 +105,7 @@ export const AccountPage: React.FC = () => {
         </button>
       </div>
       
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center relative overflow-hidden">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center relative overflow-hidden text-gray-900">
         {/* Profile Picture */}
         <div className="relative inline-block group">
           <div 
@@ -155,50 +155,50 @@ export const AccountPage: React.FC = () => {
           ) : (
             <>
               <h3 className="text-xl font-bold">{profile?.username || 'Gast'}</h3>
-              <button onClick={() => setEditingName(true)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setEditingName(true)} className="text-gray-900 hover:text-gray-900">
                 <Edit2 size={14} />
               </button>
             </>
           )}
         </div>
-        <p className="text-gray-500 text-sm">Level {Math.floor(totalPointsEarned / 50) + 1}</p>
+        <p className="text-gray-900 text-sm">Level {Math.floor(totalPointsEarned / 50) + 1}</p>
         
         {/* Dev Tool */}
         <button 
           onClick={() => addPoints(10000)}
-          className="mt-4 text-xs text-gray-300 hover:text-gray-500 transition-colors"
+          className="mt-4 text-xs text-gray-900 hover:text-gray-900 transition-colors"
         >
           (Dev: +10.000 Coins)
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">Gesamtpunkte</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-gray-900">
+          <p className="text-sm text-gray-900">Gesamtpunkte</p>
           <p className="text-2xl font-bold">{totalPointsEarned}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">Aktuelle Punkte</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-gray-900">
+          <p className="text-sm text-gray-900">Aktuelle Punkte</p>
           <p className="text-2xl font-bold">{points}</p>
         </div>
         
-        <Link to="/achievements" className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors block">
+        <Link to="/achievements" className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors block text-gray-900">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm text-gray-500">Erfolge</p>
+              <p className="text-sm text-gray-900">Erfolge</p>
               <p className="text-2xl font-bold">{unlockedAchievements} / {achievements.length}</p>
             </div>
             <span className="text-xl">🏆</span>
           </div>
         </Link>
         
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">Erledigt</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-gray-900">
+          <p className="text-sm text-gray-900">Erledigt</p>
           <p className="text-2xl font-bold">{completedTasks}</p>
         </div>
       </div>
       
-      <div className="text-center text-sm text-gray-400 mt-8 bg-white/50 inline-block px-4 py-1 rounded-full backdrop-blur-sm mx-auto w-full">
+      <div className="text-center text-sm text-gray-900 mt-8 bg-white/50 inline-block px-4 py-1 rounded-full backdrop-blur-sm mx-auto w-full">
         Version 1.1.0
       </div>
     </div>

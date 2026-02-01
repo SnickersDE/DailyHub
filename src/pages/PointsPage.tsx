@@ -9,9 +9,9 @@ export const PointsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-center text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">Punkte einlösen</h2>
+      <h2 className={clsx("text-2xl font-bold text-center drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]", activeTheme.colors.text)}>Punkte einlösen</h2>
       <div className="text-center">
-        <p className="text-white text-center bg-black/20 backdrop-blur-sm rounded-full py-1 px-4 inline-block mx-auto shadow-sm border border-white/20">
+        <p className="text-gray-900 text-center bg-white/80 backdrop-blur-sm rounded-full py-1 px-4 inline-block mx-auto shadow-sm border border-gray-200">
           Tausche deine gesammelten Punkte gegen neue Designs.
         </p>
       </div>
@@ -26,7 +26,7 @@ export const PointsPage: React.FC = () => {
             <div
               key={theme.id}
               className={clsx(
-                "p-4 rounded-xl border-2 transition-all flex items-center justify-between bg-white shadow-sm",
+                "p-4 rounded-xl border-2 transition-all flex items-center justify-between bg-white shadow-sm text-gray-900",
                 borderClass
               )}
             >
@@ -34,7 +34,7 @@ export const PointsPage: React.FC = () => {
                 <div className={clsx("w-12 h-12 rounded-full shadow-inner flex-shrink-0", theme.colors.primary)}></div>
                 <div>
                   <h3 className="font-bold">{theme.name}</h3>
-                  <p className="text-sm text-gray-500">{theme.description}</p>
+                  <p className="text-sm text-gray-900">{theme.description}</p>
                 </div>
               </div>
 

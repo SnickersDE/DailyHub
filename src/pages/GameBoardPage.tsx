@@ -2,19 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 import { Loader2, ArrowLeft } from 'lucide-react';
+import { clsx } from 'clsx';
 
 // Sub-components for specific games
 import { TicTacToeGame } from '../components/games/TicTacToeGame';
 import { RPSGame } from '../components/games/RPSGame';
-import { ChessGame } from '../components/games/ChessGame';
-import { FreestyleChessGame } from '../components/games/FreestyleChessGame';
 import { GameChat } from '../components/GameChat';
 
 export const GameBoardPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { themes, activeThemeId } = useApp();
   const navigate = useNavigate();
+  const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
 
   const [game, setGame] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,7 @@ export const GameBoardPage: React.FC = () => {
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-white" /></div>;
   if (!game) return null;
 
+  const isSupportedGame = game.game_type === 'tictactoe' || game.game_type === 'rps';
   const isPlayer1 = user?.id === game.player1_id;
   const isMyTurn = game.current_turn === user?.id;
 
@@ -90,19 +93,17 @@ export const GameBoardPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <button 
           onClick={() => navigate('/games')}
-          className="p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition-colors"
+          className={clsx("p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full transition-colors", activeTheme.colors.text)}
         >
           <ArrowLeft size={20} />
         </button>
         <div className="text-center">
-          <h2 className="text-xl font-bold text-white drop-shadow-md uppercase tracking-wider">
+          <h2 className={clsx("text-xl font-bold drop-shadow-md uppercase tracking-wider", activeTheme.colors.text)}>
             {game.game_type === 'tictactoe' && 'Tic-Tac-Toe'}
-            {game.game_type === 'chess' && 'Schach'}
             {game.game_type === 'rps' && 'Schere Stein Papier'}
-            {game.game_type === 'freestyle_chess' && 'Freestyle Chess'}
           </h2>
-          <p className="text-xs text-white/80">
-            {game.status === 'finished' 
+          <p className={clsx("text-xs opacity-80", activeTheme.colors.text)}>
+            {game.status === 'finished'
               ? (game.winner_id ? (game.winner_id === user?.id ? 'Du hast gewonnen!' : 'Verloren!') : 'Unentschieden!') 
               : (isMyTurn ? 'Du bist dran!' : 'Gegner ist dran...')}
           </p>
@@ -110,9 +111,16 @@ export const GameBoardPage: React.FC = () => {
         <div className="w-10" /> {/* Spacer */}
       </div>
 
-      <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 overflow-hidden flex items-center justify-center p-4 relative">
+      <div className="flex-1 bg-white/90 text-gray-900 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 overflow-hidden flex items-center justify-center p-4 relative">
         <GameChat gameId={id || ''} />
         
+        {!isSupportedGame && (
+          <div className="text-center">
+            <h3 className="text-lg font-bold mb-2">Spiel nicht verfügbar</h3>
+            <p className="text-sm text-gray-900">Dieses Spiel wurde entfernt.</p>
+          </div>
+        )}
+
         {game.game_type === 'tictactoe' && (
           <TicTacToeGame 
             gameState={game.state} 
@@ -126,20 +134,6 @@ export const GameBoardPage: React.FC = () => {
           />
         )}
         
-        {/* Placeholders for other games */}
-        {game.game_type === 'chess' && (
-             <ChessGame 
-             gameState={game.state} 
-             isMyTurn={isMyTurn}
-             isPlayer1={isPlayer1} // Player 1 is usually White
-             onMove={(newState, nextTurnId, winnerId) => {
-               handleUpdateGameState(newState, nextTurnId, winnerId);
-             }}
-             player1Id={game.player1_id}
-             player2Id={game.player2_id}
-           />
-        )}
-
         {game.game_type === 'rps' && (
            <RPSGame 
            gameState={game.state} 
@@ -150,20 +144,6 @@ export const GameBoardPage: React.FC = () => {
              // Logic will be inside RPSGame component.
              handleUpdateGameState(newState, undefined, winnerId);
            }}
-         />
-        )}
-
-        {game.game_type === 'freestyle_chess' && (
-           <FreestyleChessGame 
-           gameState={game.state} 
-           isMyTurn={isMyTurn}
-           isPlayer1={isPlayer1}
-           onMove={(newState: any, nextTurnId: string, winnerId?: string) => {
-             handleUpdateGameState(newState, nextTurnId, winnerId);
-           }}
-           player1Id={game.player1_id}
-           player2Id={game.player2_id}
-           myPlayerId={user!.id}
          />
         )}
       </div>

@@ -5,11 +5,12 @@ import * as Icons from 'lucide-react';
 import { Coins, Check, Gift } from 'lucide-react';
 
 export const AchievementsPage: React.FC = () => {
-  const { achievements, claimAchievement } = useApp();
+  const { achievements, claimAchievement, themes, activeThemeId } = useApp();
+  const activeTheme = themes.find(t => t.id === activeThemeId) || themes[0];
 
   return (
     <div className="space-y-6 pb-20">
-      <h2 className="text-2xl font-bold text-center text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">Erfolge</h2>
+      <h2 className={clsx("text-2xl font-bold text-center drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]", activeTheme.colors.text)}>Erfolge</h2>
       
       <div className="grid grid-cols-1 gap-4">
         {achievements.map(achievement => {
@@ -30,16 +31,16 @@ export const AchievementsPage: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className={clsx(
                   "w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm",
-                  achievement.unlocked ? "bg-gradient-to-br from-yellow-100 to-orange-100 text-yellow-600 border border-yellow-200" : "bg-gray-200 text-gray-400"
+                  achievement.unlocked ? "bg-gradient-to-br from-yellow-100 to-orange-100 text-yellow-600 border border-yellow-200" : "bg-gray-200 text-gray-900"
                 )}>
                   <Icon size={28} />
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <h3 className={clsx("font-bold text-lg truncate", achievement.unlocked ? "text-gray-900" : "text-gray-500")}>
+                  <h3 className="font-bold text-lg truncate text-gray-900">
                     {achievement.title}
                   </h3>
-                  <p className="text-sm text-gray-500 leading-tight">{achievement.description}</p>
+                  <p className="text-sm text-gray-900 leading-tight">{achievement.description}</p>
                 </div>
 
                 {/* Reward Badge */}

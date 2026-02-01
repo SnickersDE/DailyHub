@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { CheckSquare, ShoppingBag, User, Coins, Sparkles, Calendar, CalendarDays, Gamepad2 } from 'lucide-react';
+import { CheckSquare, ShoppingBag, User, Coins, Sparkles, Calendar, CalendarDays, Gamepad2, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { clsx } from 'clsx';
 
@@ -13,6 +13,7 @@ export const Layout: React.FC = () => {
     { to: '/weekly', icon: Calendar, label: 'Woche' },
     { to: '/monthly', icon: CalendarDays, label: 'Monat' },
     { to: '/account', icon: User, label: 'Konto' },
+    { to: '/friends', icon: Users, label: 'Freunde' },
     { to: '/points', icon: ShoppingBag, label: 'Shop' },
     { to: '/games', icon: Gamepad2, label: 'Spiele' },
   ];
@@ -29,7 +30,7 @@ export const Layout: React.FC = () => {
             <Sparkles className="absolute -top-3 -right-5 text-yellow-400 animate-twinkle" size={18} />
             <Sparkles className="absolute -bottom-2 -left-5 text-yellow-400 animate-twinkle" style={{ animationDelay: '0.5s' }} size={14} />
           </div>
-          <div className="flex items-center gap-2 bg-black/5 px-3 py-1 rounded-full">
+          <div className="flex items-center gap-2 bg-black/5 px-3 py-1 rounded-full text-gray-900">
             <Coins size={18} className="text-yellow-600" />
             <span className="font-bold">{points}</span>
           </div>
@@ -42,7 +43,7 @@ export const Layout: React.FC = () => {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className={clsx("fixed bottom-0 left-0 right-0 border-t bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 z-50")}>
+      <nav className={clsx("fixed bottom-0 left-0 right-0 border-t bg-white border-gray-200 z-50")}>
         <div className="flex justify-around items-center max-w-md mx-auto h-16">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
@@ -51,7 +52,7 @@ export const Layout: React.FC = () => {
               className={({ isActive }) =>
                 clsx(
                   "flex flex-col items-center justify-center w-full h-full transition-colors",
-                  isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  isActive ? "text-blue-600" : "text-gray-900 hover:text-gray-900"
                 )
               }
             >

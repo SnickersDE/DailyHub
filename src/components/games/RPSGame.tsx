@@ -65,18 +65,18 @@ export const RPSGame: React.FC<Props> = ({ gameState, myPlayerId, onMove }) => {
       <div className="flex justify-center gap-8">
         {/* Opponent */}
         <div className="flex flex-col items-center">
-          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-2">
-             {opponentMove ? (result ? getIcon(opponentMove) : <span className="text-4xl">?</span>) : <span className="text-gray-400">...</span>}
+          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-2 text-gray-900">
+             {opponentMove ? (result ? getIcon(opponentMove) : <span className="text-4xl">?</span>) : <span className="text-gray-900">...</span>}
           </div>
-          <span className="font-bold text-gray-600">Gegner</span>
+          <span className="font-bold text-gray-900">Gegner</span>
         </div>
 
         {/* Me */}
         <div className="flex flex-col items-center">
           <div className={clsx("w-24 h-24 rounded-full flex items-center justify-center mb-2 border-4", result === 'win' ? "border-green-500 bg-green-100" : "border-blue-500 bg-blue-100")}>
-             {myMove ? getIcon(myMove) : <span className="text-gray-400">?</span>}
+             {myMove ? getIcon(myMove) : <span className="text-gray-900">?</span>}
           </div>
-          <span className="font-bold text-gray-800">Du</span>
+          <span className="font-bold text-gray-900">Du</span>
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export const RPSGame: React.FC<Props> = ({ gameState, myPlayerId, onMove }) => {
 
       {result && (
         <div className="mt-4 text-2xl font-bold">
-          {result === 'draw' && <span className="text-gray-500">Unentschieden!</span>}
+          {result === 'draw' && <span className="text-gray-900">Unentschieden!</span>}
           {result === 'win' && <span className="text-green-500">Gewonnen!</span>}
           {result === 'lose' && <span className="text-red-500">Verloren!</span>}
         </div>
@@ -110,9 +110,9 @@ const GameButton = ({ icon, label, onClick, disabled }: any) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl shadow-sm hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+    className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl shadow-sm hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100 text-gray-900"
   >
-    <div className="text-gray-700">{icon}</div>
+    <div className="text-gray-900">{icon}</div>
     <span className="text-xs font-bold uppercase">{label}</span>
   </button>
 );

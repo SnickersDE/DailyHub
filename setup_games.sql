@@ -1,14 +1,14 @@
--- Setup Tables for Games (Chess, Tic-Tac-Toe, RPS)
+-- Setup Tables for Games (Tic-Tac-Toe, RPS)
 
 -- 1. GAMES Table
 -- Stores the active state of games
 create table games (
   id uuid default uuid_generate_v4() primary key,
-  game_type text check (game_type in ('chess', 'tictactoe', 'rps')) not null,
+  game_type text check (game_type in ('tictactoe', 'rps')) not null,
   player1_id uuid references auth.users not null,
   player2_id uuid references auth.users not null,
   current_turn uuid references auth.users, -- Whose turn is it? (null for simultaneous like RPS)
-  state jsonb default '{}'::jsonb, -- Flexible storage for board state (FEN for chess, grid for TTT)
+  state jsonb default '{}'::jsonb, -- Flexible storage for board state (grid for TTT)
   status text check (status in ('waiting', 'playing', 'finished', 'aborted')) default 'waiting',
   winner_id uuid references auth.users, -- null if draw or ongoing
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -40,7 +40,7 @@ create table game_invites (
   id uuid default uuid_generate_v4() primary key,
   sender_id uuid references auth.users not null,
   receiver_id uuid references auth.users not null,
-  game_type text check (game_type in ('chess', 'tictactoe', 'rps')) not null,
+  game_type text check (game_type in ('tictactoe', 'rps')) not null,
   status text check (status in ('pending', 'accepted', 'declined')) default 'pending',
   game_id uuid references games(id), -- Linked game once accepted
   created_at timestamp with time zone default timezone('utc'::text, now()) not null

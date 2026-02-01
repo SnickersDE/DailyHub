@@ -93,7 +93,7 @@ export const FriendProfilePage: React.FC = () => {
         <h2 className="text-2xl font-bold text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">Freund-Profil</h2>
       </div>
       
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center relative overflow-hidden">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center relative overflow-hidden text-gray-900">
         {/* Profile Picture */}
         <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl border-4 border-white shadow-md overflow-hidden">
           {profile.avatar_url ? (
@@ -107,21 +107,21 @@ export const FriendProfilePage: React.FC = () => {
         <div className="flex justify-center items-center gap-2 mb-1">
           <h3 className="text-xl font-bold">{profile.username}</h3>
         </div>
-        <p className="text-gray-500 text-sm">Level {level}</p>
+        <p className="text-gray-900 text-sm">Level {level}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">Gesamtpunkte</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-gray-900">
+          <p className="text-sm text-gray-900">Gesamtpunkte</p>
           <p className="text-2xl font-bold">{profile.user_stats.total_points}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500">Aktuelle Punkte</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-gray-900">
+          <p className="text-sm text-gray-900">Aktuelle Punkte</p>
           <p className="text-2xl font-bold">{profile.user_stats.points}</p>
         </div>
         
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 col-span-2">
-          <p className="text-sm text-gray-500">Aufgaben (Woche)</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 col-span-2 text-gray-900">
+          <p className="text-sm text-gray-900">Aufgaben (Woche)</p>
           <p className="text-2xl font-bold">{profile.user_stats.tasks_completed_weekly}</p>
         </div>
       </div>
