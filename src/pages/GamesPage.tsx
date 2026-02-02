@@ -155,7 +155,7 @@ export const GamesPage: React.FC = () => {
         .from('game_invites')
         .select(`
           *,
-          sender:profiles!sender_id(username, avatar_url)
+          sender:profiles!game_invites_sender_profiles_fkey(username, avatar_url)
         `)
         .eq('receiver_id', user.id)
         .eq('status', 'pending')

@@ -278,6 +278,35 @@ begin
 end $$;
 create policy "Users can leave lobbies." on lobby_members for delete using (auth.uid() = user_id);
 
+do $$
+declare
+  has_user_id boolean;
+  has_player_id boolean;
+begin
+  if exists (select 1 from pg_class where relname = 'lobby_players') then
+    execute 'alter table lobby_players enable row level security';
+    for r in select policyname from pg_policies where tablename = 'lobby_players' loop
+      execute format('drop policy if exists %I on lobby_players', r.policyname);
+    end loop;
+    select exists(
+      select 1 from information_schema.columns 
+      where table_name = 'lobby_players' and column_name = 'user_id'
+    ) into has_user_id;
+    select exists(
+      select 1 from information_schema.columns 
+      where table_name = 'lobby_players' and column_name = 'player_id'
+    ) into has_player_id;
+    execute 'create policy "Lobby players are viewable by everyone." on lobby_players for select using (true)';
+    if has_user_id then
+      execute 'create policy "Users can join lobby players." on lobby_players for insert with check (auth.uid() = user_id)';
+      execute 'create policy "Users can leave lobby players." on lobby_players for delete using (auth.uid() = user_id)';
+    elsif has_player_id then
+      execute 'create policy "Users can join lobby players." on lobby_players for insert with check (auth.uid() = player_id)';
+      execute 'create policy "Users can leave lobby players." on lobby_players for delete using (auth.uid() = player_id)';
+    end if;
+  end if;
+end $$;
+
 create table if not exists games (
   id uuid default uuid_generate_v4() primary key,
   game_type text check (game_type in ('tictactoe', 'rps', 'samurai')) not null,
